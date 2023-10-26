@@ -1,5 +1,4 @@
-#ifndef p_SSD1306_CMD_h
-#define p_SSD1306_CMD_h
+#pragma once
 
 #ifdef __cplusplus
 extern "C"
@@ -56,6 +55,4 @@ bool OLED_NOP(I2C_t *i2c);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

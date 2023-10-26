@@ -1,6 +1,4 @@
-#ifndef MISC
-#define MISC
-
+#pragma once
 #ifdef __cplusplus
 extern "C"
 {
@@ -206,6 +204,4 @@ static inline sort_t *insertSort(sort_t *base, const size_t nmemb)
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

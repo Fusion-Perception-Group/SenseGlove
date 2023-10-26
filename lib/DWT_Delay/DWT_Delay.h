@@ -1,5 +1,4 @@
-#ifndef DWT_STM32_DELAY_H
-#define DWT_STM32_DELAY_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C"
@@ -29,6 +28,4 @@ extern "C"
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

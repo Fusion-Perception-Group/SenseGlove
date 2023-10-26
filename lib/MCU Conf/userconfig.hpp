@@ -1,0 +1,42 @@
+#pragma once
+
+/* DO NOT MODIFY CODE ABOVE UNLESS YOU KNOW WHAT YOU ARE DOING */
+
+inline constexpr char ModelName[] = "STM32F411CET6";
+
+//#define VERMIL_STM32F103
+#define VERMIL_STM32F411
+//#define VERMIL_STM32H743
+//#define VERMIL_STM32H750
+
+#define VERMIL_STM32_USE_CMSIS 0
+
+//#define VERMIL_STM32_CUSTOM_FIRMWARE_LIB ""
+
+/* DO NOT MODIFY CODE BELOW UNLESS YOU KNOW WHAT YOU ARE DOING */
+
+#if defined(VERMIL_STM32F103)
+#define __VERMIL_STM32F1
+
+#elif defined(VERMIL_STM32F411)
+#define __VERMIL_STM32F4
+
+#elif defined(VERMIL_STM32H743) || defined(VERMIL_STM32H750)
+#define __VERMIL_STM32H7
+
+#else
+#define __VERMIL_STM32_USE_GENERIC 1
+
+#endif
+
+#ifndef __VERMIL_STM32_USE_GENERIC
+#define __VERMIL_STM32_USE_GENERIC 0
+#endif
+
+#if defined(__VERMIL_STM32F1) || defined(__VERMIL_STM32F4)
+#define __VERMIL_STM32FX
+
+#elif defined(__VERMIL_STM32H7)
+#define __VERMIL_STM32HX
+
+#endif

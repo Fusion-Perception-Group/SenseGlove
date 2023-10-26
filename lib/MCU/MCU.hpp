@@ -1,9 +1,8 @@
-#ifndef _p_mcu_hpp_
-#define _p_mcu_hpp_
+#pragma once
 
 #include <string>
 #include <cstdint>
-#include "MCU_Conf.hpp"
+#include "userconfig.hpp"
 #include "GPIO.hpp"
 #include "Property.hpp"
 
@@ -13,30 +12,23 @@ namespace stm32
 {
 class MCU
 {
-    class GPIOCls
-    {
-
-    };
 public:
     const std::string model = ModelName;
     std::string name;
 
+    MCU(const std::string &name) : name(name) {}
 
-    #ifdef GPIOA
-    GPIOCls gpioa[GPIO_PINS_N];
-    #endif
-    #ifdef GPIOB
-    GPIOCls gpiob[GPIO_PINS_N];
-    #endif
-
+    /**
+     * @brief You don't have to explicitly call this function, it is called by the constructor.
+     * 
+     * @return int 0 if success, otherwise error code
+     */
     int init()
     {
-        return HAL_Init();
+        
     }
 
 };
 
 }
 }
-
-#endif

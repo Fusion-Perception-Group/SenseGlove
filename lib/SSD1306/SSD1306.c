@@ -22,10 +22,12 @@ bool init_display(I2C_t *i2c)
         0xd3, // set display offset
         0x0,
         0x40, // set display start line
-        0xa1, // set segment re-map
+        0xa1, // set segment re-map on
         0xc8, // set COM output scan direction
         0xda, // set COM pins hardware configuration
         0x12,
+        0x20, // set memory addressing mode to page
+        0x02,
         0x81, // set contrast control
         0xcf,
         0xd9, // set pre-charge period
@@ -47,7 +49,7 @@ bool set_col_start_addr_for_page_mode(I2C_t *i2c, const uint8_t addr)
     uint8_t data[] = {
         CMD_S,
         0x0f & addr,      // set lower column start address for page addressing mode
-        0x10 | addr >> 4, // set higher column start address for page addressing mode
+        0x10 | (addr >> 4), // set higher column start address for page addressing mode
     };
 
     return write_I2C(i2c, OLED_ADDR, data, sizeof(data));

@@ -143,14 +143,19 @@ bool select_I2C(I2C_t *i2c, const uint8_t address, const bool read)
  * @param read: 0 for write, 1 for read
  * @return bool: Whether is acknowledged
  */
-bool select_10b_I2C(I2C_t *i2c, uint32_t address, const bool read)
+bool select_10b_I2C(I2C_t *i2c, uint16_t address, const bool read)
 {
     _start_I2C(i2c);
-    address = (address >> 5) | read | 0xF000;
+    address = ((address & 0xc000)>> 5) | 0xF000 | ((address & 0x3fc0) >> 6) | (address & 0x3f);
     bool ack = wbyte_I2C(i2c, address >> 8);
     if (ack)
     {
         ack = wbyte_I2C(i2c, address & 0xFF);
+        if (ack && read)
+        {
+            _starrt_I2C(i2c);
+            ack = wbyte_I2C(i2c, ((address & 0xc000)>> 5) | 0xF000 | read);
+        }
     }
     return ack;
 }

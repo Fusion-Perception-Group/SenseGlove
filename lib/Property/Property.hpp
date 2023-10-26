@@ -1,5 +1,4 @@
-#ifndef _p_property_hpp_
-#define _p_property_hpp_
+#pragma once
 
 #include <functional>
 
@@ -40,9 +39,12 @@ namespace tricks
 template <typename T>
 class Property
 {
+protected:
     const std::function<T()> getter;
     const std::function<void(const T)> setter;
 public:
+    typedef std::function<T()> Getter;
+    typedef std::function<void(const T)> Setter;
     Property() = delete;
     /**
      * @brief Construct a new Property object.
@@ -69,6 +71,7 @@ public:
 template <typename T>
 class Property<T&>
 {
+protected:
     const std::function<T()> getter;
     const std::function<void(const T&)> setter;
 public:
@@ -90,5 +93,3 @@ public:
 
 }
 }
-
-#endif

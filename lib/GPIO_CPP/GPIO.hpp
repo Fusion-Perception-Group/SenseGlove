@@ -1,72 +1,166 @@
-#ifndef _p_gpio_hpp_
-#define _p_gpio_hpp_
+#pragma once
 
 #include <string>
-#include "MCU_Conf.hpp"
+#include <exception>
+#include "userconfig.hpp"
 #include "Property.hpp"
 
 namespace vermils
 {
 namespace stm32
 {
+namespace gpio
+{
+ class GPIOException : public std::exception
+ {
+public:
+    const char *what() const noexcept override
+    {
+        return "GPIOException";
+    }
+ };
 
-static const uint8_t GPIO_PINS_N = 16;
+// Define some constants
+inline constexpr uint8_t GPIO_PINS_N = 16;
 
-struct GPIOPinConfig
+class Pin;
+namespace hidden
+{
+    /**
+     * @brief GPIO Port Class
+     * @warning DO NOT MANNUALLY INSTANTIATE THIS CLASS
+     */
+    class _Port final
+    {
+    public:
+        #if defined(__VERMIL_STM32F1)
+        volatile uint32_t CRL;      /*!< GPIO port configuration register low,  Address offset: 0x00      */
+        volatile uint32_t CRH;      /*!< GPIO port configuration register high, Address offset: 0x04      */
+        volatile uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x08      */
+        volatile uint32_t ODR;      /*!< GPIO port output data register,        Address offset: 0x0C      */
+        volatile uint32_t BSRR;     /*!< GPIO port bit set/reset register,      Address offset: 0x10      */
+        volatile uint32_t BRR;      /*!< GPIO port bit reset register,          Address offset: 0x14      */
+        volatile uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x18      */
+        #elif defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32H7)
+        volatile uint32_t MODER;    /*!< GPIO port mode register,               Address offset: 0x00      */
+        volatile uint32_t OTYPER;   /*!< GPIO port output type register,        Address offset: 0x04      */
+        volatile uint32_t OSPEEDR;  /*!< GPIO port output speed register,       Address offset: 0x08      */
+        volatile uint32_t PUPDR;    /*!< GPIO port pull-up/pull-down register,  Address offset: 0x0C      */
+        volatile uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x10      */
+        volatile uint32_t ODR;      /*!< GPIO port output data register,        Address offset: 0x14      */
+        volatile uint32_t BSRR;     /*!< GPIO port bit set/reset register,      Address offset: 0x18      */
+        volatile uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x1C      */
+        volatile uint32_t AFR[2];   /*!< GPIO alternate function registers,     Address offset: 0x20-0x24 */
+        #elif __VERMIL_STM32_USE_GENERIC
+        Property<uint32_t> BSRR;
+        #endif
+        _Port() = delete;
+        _Port & operator = (const _Port & port) = delete;
+
+        void enable_clock() const;
+
+        void disable_clock() const;
+
+        void set(const uint32_t mask)
+        {
+            BSRR = mask;
+        }
+
+        void set(const Pin & pin);
+
+        void reset(const uint32_t mask)
+        {
+            BSRR = mask << GPIO_PINS_N;
+        }
+
+        void reset(const Pin & pin);
+
+        bool operator == (const _Port & port) const
+        {
+            return &port == this;
+        }
+
+        friend class Pin;
+    };
+}
+
+bool is_valid_port(const hidden::_Port & port);
+bool is_valid_port(const int port_index);
+int get_port_index(const hidden::_Port & port);
+hidden::_Port & get_port_by_index(const int index);
+
+namespace ports
+{
+    extern hidden::_Port & PortA;
+    extern hidden::_Port & PortB;
+    extern hidden::_Port & PortC;
+    extern hidden::_Port & PortD;
+    extern hidden::_Port & PortE;
+    extern hidden::_Port & PortF;
+    extern hidden::_Port & PortG;
+    extern hidden::_Port & PortH;
+    extern hidden::_Port & PortI;
+}
+using namespace ports;
+
+struct PinConfig
 {
     enum IO
     {
-        Input=MODE_INPUT,
-        Output=MODE_OUTPUT,
-        AF=MODE_AF,
-        Analog=MODE_ANALOG,
+        Input=0x00,
+        Output=0x01,
+        // Alternate function
+        AF=0x02,
+        Analog=0x03,
     };
     enum OutMode
     {
-        PushPull=OUTPUT_PP,
-        OpenDrain=OUTPUT_OD,
+        PushPull=0x00,
+        OpenDrain=0x01,
     };
     enum EXTIMode
     {
-        NoEXTI=EXTI_MODE_NONE,
-        Interrupt=EXTI_MODE_INTERRUPT ,
-        Event=EXTI_MODE_EVENT,
+        NoEXTI=0x00,
+        Interrupt=0x01,
+        Event=0x02,
     };
     enum Trigger
     {
-        NoTrigger=EXTI_TRIGGER_NONE,
-        Rising=EXTI_TRIGGER_RISING,
-        Falling=EXTI_TRIGGER_FALLING,
-        RisingFalling=EXTI_TRIGGER_RISING_FALLING,
+        NoTrigger=0x00,
+        Rising=0x01,
+        Falling=0x02,
+        RisingFalling=Rising | Falling,
     };
     enum Pull
     {
-        NoPull=GPIO_NOPULL,
-        PullUp=GPIO_PULLUP,
-        PullDown=GPIO_PULLDOWN,
+        NoPull=0x00,
+        PullUp=0x01,
+        PullDown=0x02,
     };
     enum Speed
     {
-        Low=GPIO_SPEED_FREQ_LOW,
-        Medium=GPIO_SPEED_FREQ_MEDIUM,
-        High=GPIO_SPEED_FREQ_HIGH,
-        #ifdef GPIO_SPEED_FREQ_VERY_HIGH
-        VeryHigh=GPIO_SPEED_FREQ_VERY_HIGH,
-        #endif
+        // Typically 2MHz
+        Low=0x00,
+        // Typically 12.5MHz - 50MHz
+        Medium=0x01,
+        // Typically 25MHz - 100MHz
+        High=0x02,
+        // Typically 50MHz - 200MHz
+        VeryHigh=0x03,
     };
 
-    GPIOPinConfig() = default;
+    PinConfig() = default;
     //Opted for input
-    GPIOPinConfig(
+    PinConfig(
         const IO io, const Pull pull,
         const EXTIMode exti_mode = NoEXTI, const Trigger trigger = NoTrigger):
         io(io), pull(pull), exti_mode(exti_mode), trigger(trigger) {}
     //Opted for output
-    GPIOPinConfig(
+    PinConfig(
         const IO io, const Speed speed, const OutMode out_mode, const uint8_t alternate = 0):
         io(io), speed(speed), out_mode(out_mode), alternate(alternate) {}
     // Universal
-    GPIOPinConfig(
+    PinConfig(
         const IO io, const Pull pull, const Speed speed, const OutMode out_mode,
         const uint8_t alternate, const EXTIMode exti_mode, const Trigger trigger):
         io(io), pull(pull), speed(speed), out_mode(out_mode),
@@ -81,216 +175,115 @@ struct GPIOPinConfig
     Trigger trigger = NoTrigger;
 };
 
-class GPIOPin
-{    
+/**
+ * @brief GPIO Pin
+ * 
+ * @param port The port of the pin.
+ * @param pin The pin number. Starts from 0.
+ */
+class Pin
+{
+    uint8_t _pin;
+    uint32_t _mask;
+    #if __VERMIL_STM32_USE_GENERIC
+    mutable PinConfig _config;
+    #endif
 public:
-    GPIO_TypeDef* const port;
-    const uint8_t pin;
+    hidden::_Port & port;
+    // Pin number
+    tricks::Property<uint8_t> pin = {
+        [this]() { return _pin; },
+        [this](const auto value)
+        {
+            _pin = value;
+            _mask = 1 << value;
+        }
+    };
+    // Pin mask
+    const tricks::Property<uint32_t> mask = {
+        [this]() -> uint32_t { return _mask; }
+    };
 
-    GPIOPin(GPIO_TypeDef* const port, const uint8_t pin): port(port), pin(pin) {}
-    GPIOPin(GPIO_TypeDef* const port, const uint8_t pin, const GPIOPinConfig & config): port(port), pin(pin)
+    Pin(hidden::_Port & port, const uint8_t pin);
+    Pin(hidden::_Port & port, const uint8_t pin, const PinConfig & config);
+
+    mutable tricks::Property<PinConfig::IO> io;
+    mutable tricks::Property<PinConfig::OutMode> out_mode;
+    mutable tricks::Property<PinConfig::EXTIMode> exti_mode;
+    mutable tricks::Property<PinConfig::Trigger> trigger;
+    mutable tricks::Property<PinConfig::Pull> pull;
+    mutable tricks::Property<PinConfig::Speed> speed;
+    mutable tricks::Property<uint8_t> alternate;
+
+    /**
+     * @brief Loads the configuration and enable clock
+     * 
+     * @return const PinConfig 
+     */
+    const PinConfig load() const;
+    const PinConfig & load(const PinConfig & config) const;
+
+    /**
+     * @brief Unloads the configuration, don't affect clock
+     * 
+     */
+    void unload() const;
+
+    /**
+     * @brief Sets the pin to high.
+     * 
+     */
+    void set() const
     {
-        set(config);
+        port.BSRR = _mask;
     }
 
-    mutable tricks::Property<GPIOPinConfig::IO> io = {
-        [this]() -> GPIOPinConfig::IO
-        {
-            return static_cast<GPIOPinConfig::IO>(
-                (port->MODER >> (pin * 2)) & GPIO_MODER_MODER0
-            );
-        },
-        [this](const GPIOPinConfig::IO value)
-        {
-            uint32_t temp = port->MODER;
-            temp &= ~(GPIO_MODER_MODER0 << (pin * 2));
-            temp |= (static_cast<uint32_t>(value) << (pin * 2));
-            port->MODER = temp;
-        }
-    };
+    /**
+     * @brief Sets the pin to low.
+     * 
+     */
+    void reset() const
+    {
+        port.BSRR = _mask << GPIO_PINS_N;
+    }
 
-    mutable tricks::Property<GPIOPinConfig::OutMode> out_mode = {
-        [this]() -> GPIOPinConfig::OutMode
-        {
-            return static_cast<GPIOPinConfig::OutMode>(
-                (port->OTYPER >> pin) & GPIO_OTYPER_OT_0
-            );
-        },
-        [this](const GPIOPinConfig::OutMode value)
-        {
-            uint32_t temp = port->OTYPER;
-            temp &= ~(GPIO_OTYPER_OT_0 << pin);
-            temp |= (static_cast<uint32_t>(value) << pin);
-            port->OTYPER = temp;
-        }
-    };
-
-    mutable tricks::Property<GPIOPinConfig::EXTIMode> exti_mode = {
-        [this]() -> GPIOPinConfig::EXTIMode
-        {
-            const uint32_t mask = 1 << pin;
-            return static_cast<GPIOPinConfig::EXTIMode>(
-                bool(EXTI->IMR & mask) | (bool(EXTI->EMR & mask) << 1)
-            );
-        },
-        [this](const GPIOPinConfig::EXTIMode value)
-        {
-            uint32_t temp;
-            const uint32_t mask = 1 << pin;
-            switch (value)
-            {
-                case GPIOPinConfig::NoEXTI:
-                    temp = EXTI->IMR;
-                    temp &= ~mask;
-                    EXTI->IMR = temp;
-                    temp = EXTI->EMR;
-                    temp &= ~mask;
-                    EXTI->EMR = temp;
-                    break;
-                case GPIOPinConfig::Interrupt:
-                    temp = EXTI->IMR;
-                    temp |= mask;
-                    EXTI->IMR = temp;
-                    temp = EXTI->EMR;
-                    temp &= ~mask;
-                    EXTI->EMR = temp;
-                    break;
-                case GPIOPinConfig::Event:
-                    temp = EXTI->IMR;
-                    temp &= ~mask;
-                    EXTI->IMR = temp;
-                    temp = EXTI->EMR;
-                    temp |= mask;
-                    EXTI->EMR = temp;
-                    break;
-            }
-        }
-    };
-
-    mutable tricks::Property<GPIOPinConfig::Trigger> trigger = {
-        [this]() -> GPIOPinConfig::Trigger
-        {
-            const uint32_t mask = 1 << pin;
-            return static_cast<GPIOPinConfig::Trigger>(
-                bool(EXTI->RTSR & mask) | (bool(EXTI->FTSR & mask) << 1)
-            );
-        },
-        [this](const GPIOPinConfig::Trigger value)
-        {
-            uint32_t temp;
-            const uint32_t mask = 1 << pin;
-            switch (value)
-            {
-                case GPIOPinConfig::NoTrigger:
-                    temp = EXTI->RTSR;
-                    temp &= ~mask;
-                    EXTI->RTSR = temp;
-                    temp = EXTI->FTSR;
-                    temp &= ~mask;
-                    EXTI->FTSR = temp;
-                    break;
-                case GPIOPinConfig::Rising:
-                    temp = EXTI->RTSR;
-                    temp |= mask;
-                    EXTI->RTSR = temp;
-                    temp = EXTI->FTSR;
-                    temp &= ~mask;
-                    EXTI->FTSR = temp;
-                    break;
-                case GPIOPinConfig::Falling:
-                    temp = EXTI->RTSR;
-                    temp &= ~mask;
-                    EXTI->RTSR = temp;
-                    temp = EXTI->FTSR;
-                    temp |= mask;
-                    EXTI->FTSR = temp;
-                    break;
-                case GPIOPinConfig::RisingFalling:
-                    temp = EXTI->RTSR;
-                    temp |= mask;
-                    EXTI->RTSR = temp;
-                    temp = EXTI->FTSR;
-                    temp |= mask;
-                    EXTI->FTSR = temp;
-                    break;
-            }
-        }
-    };
-
-    mutable tricks::Property<GPIOPinConfig::Pull> pull = {
-        [this]() -> GPIOPinConfig::Pull
-        {
-            return static_cast<GPIOPinConfig::Pull>(
-                (port->PUPDR >> (pin * 2)) & GPIO_PUPDR_PUPDR0
-            );
-        },
-        [this](const GPIOPinConfig::Pull value)
-        {
-            uint32_t temp = port->PUPDR;
-            temp &= ~(GPIO_PUPDR_PUPDR0 << (pin * 2));
-            temp |= (static_cast<uint32_t>(value) << (pin * 2));
-            port->PUPDR = temp;
-        }
-    };
-
-    mutable tricks::Property<GPIOPinConfig::Speed> speed = {
-        [this]() -> GPIOPinConfig::Speed
-        {
-            return static_cast<GPIOPinConfig::Speed>(
-                (port->OSPEEDR >> (pin * 2)) & GPIO_OSPEEDER_OSPEEDR0
-            );
-        },
-        [this](const GPIOPinConfig::Speed value)
-        {
-            uint32_t temp = port->OSPEEDR;
-            temp &= ~(GPIO_OSPEEDER_OSPEEDR0 << (pin * 2));
-            temp |= (static_cast<uint32_t>(value) << (pin * 2));
-            port->OSPEEDR = temp;
-        }
-    };
-
-    mutable tricks::Property<uint8_t> alternate = {
-        [this]() -> uint8_t
-        {
-            return static_cast<uint8_t>(
-                (port->AFR[pin >> 3] >> ((pin & 0x7) << 2)) & 0xFU
-            );
-        },
-        [this](const uint8_t value)
-        {
-            uint32_t temp = port->AFR[pin >> 3];
-            temp &= ~(static_cast<uint32_t>(0xFU) << ((pin & 0x7) << 2));
-            temp |= (static_cast<uint32_t>(value) << ((pin & 0x7) << 2));
-            port->AFR[pin >> 3] = temp;
-        }
-    };
-
-    void enable_clock() const;
-    void disable_clock() const;
-    const GPIOPinConfig set() const;
-    const GPIOPinConfig & set(const GPIOPinConfig & config) const;
-    void reset() const;
-
+    /**
+     * @brief Toggles the pin.
+     * 
+     * @return true: Pin is high.
+     * @return false: Pin is low.
+     */
     bool read() const
     {
-        return bool(port->IDR & (1 << pin));
+        return bool(port.IDR & _mask);
     }
 
+    /**
+     * @brief Writes a value to the pin.
+     * 
+     * @param value The value to write.
+     */
     void write(const bool value) const
     {
-        uint32_t temp = 1 << pin;
-        if (value)
+        uint32_t temp = _mask;
+        if (!value)
             temp <<= GPIO_PINS_N;
-        port->BSRR = temp;
+        port.BSRR = temp;
     }
 
+    /**
+     * @brief Toggles the pin.
+     * 
+     * @return true: Pin was high.
+     * @return false: Pin was low.
+     */
     bool toggle() const
     {
-        uint32_t temp = 1 << pin;
-        bool value = bool(port->ODR & temp);
+        uint32_t temp = _mask;
+        bool value = bool(port.ODR & temp);
         if (value)
             temp <<= GPIO_PINS_N;
-        port->BSRR = temp;
+        port.BSRR = temp;
         return value;
     }
 
@@ -304,9 +297,35 @@ public:
         write(value);
         return value;
     }
+
+    bool operator == (const bool value) const
+    {
+        return read() == value;
+    }
+
+    bool operator == (const Pin & pin) const
+    {
+        return port == pin.port && _pin == pin._pin;
+    }
+
+    uint32_t operator | (const uint32_t mask) const
+    {
+        return _mask | mask;
+    }
+
+    uint32_t operator | (const Pin & pin) const
+    {
+        return _mask | pin._mask;
+    }
+
+    uint32_t operator ~ () const
+    {
+        return ~_mask;
+    }
+
+    friend class hidden::_Port;
 };
 
 }
 }
-
-#endif
+}

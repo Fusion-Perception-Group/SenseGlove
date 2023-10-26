@@ -1,5 +1,4 @@
-#ifndef _p_tim_hpp_
-#define _p_tim_hpp_
+#pragma once
 namespace vermils
 {
 namespace stm32
@@ -7,4 +6,3 @@ namespace stm32
 
 }
 }
-#endif

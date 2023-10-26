@@ -1,5 +1,4 @@
-#ifndef p_SSD1306_h
-#define p_SSD1306_h
+#pragma once
 
 #ifdef __cplusplus
 extern "C"
@@ -107,6 +106,4 @@ bool fill_block(Canvas canvas, unsigned x, unsigned y, bool value);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

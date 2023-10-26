@@ -1,6 +1,4 @@
-#ifndef p_I2C_h
-#define p_I2C_h
-
+#pragma once
 #ifdef __cplusplus
 extern "C"
 {
@@ -103,7 +101,7 @@ uint8_t rbyte_I2C_nack(const I2C_t *i2c);
 
 bool select_I2C(I2C_t *i2c, const uint8_t address, const bool read);
 
-bool select_10b_I2C(I2C_t *i2c, uint32_t address, const bool read);
+bool select_10b_I2C(I2C_t *i2c, uint16_t address, const bool read);
 
 bool write_I2C(I2C_t *i2c, const uint8_t address, const uint8_t data[], const uint_fast32_t size);
 
@@ -113,6 +111,4 @@ double benchmark_I2C(I2C_t *i2c, const unsigned size_byte);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

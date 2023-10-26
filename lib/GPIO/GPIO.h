@@ -1,5 +1,4 @@
-#ifndef p_GPIO_h
-#define p_GPIO_h
+#pragma once
 
 #ifdef __cplusplus
 extern "C"
@@ -57,6 +56,4 @@ void disable_GPIO_CLK(GPIO_TypeDef *GPIOx);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

@@ -1,5 +1,4 @@
-#ifndef p_CLK_CFG_h
-#define p_CLK_CFG_h
+#pragma once
 
 #ifdef __cplusplus
 extern "C"
@@ -14,5 +13,4 @@ void MX_RTC_Init(void);
 
 #ifdef __cplusplus
 }
-#endif
 #endif
