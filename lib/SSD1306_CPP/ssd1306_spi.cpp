@@ -1,4 +1,4 @@
-#include "SSD1306.hpp"
+#include "ssd1306.hpp"
 
 namespace vermils
 {

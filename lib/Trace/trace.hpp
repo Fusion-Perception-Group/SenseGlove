@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Property.hpp"
+#include "property.hpp"
 
 namespace vermils
 {
@@ -8,9 +8,15 @@ namespace stm32
 {
     void enable_trace();
 
+    namespace hidden
+    {
+        extern volatile uint32_t & CYCCNT;
+    }
+    
     class DataWatchpointTrigger
     {
     public:
+        volatile uint32_t & CYCCNT = hidden::CYCCNT;
         mutable tricks::Property<uint32_t> CTRL;
         mutable tricks::Property<bool> CYCCNTENA;
         mutable tricks::Property<bool> EXCTRCENA;
@@ -30,7 +36,7 @@ namespace stm32
         mutable tricks::Property<bool> CYCTAP;
         mutable tricks::Property<uint8_t> SYNCTAP;
         mutable tricks::Property<uint8_t> NUMCOMP;
-        mutable tricks::Property<uint32_t> CYCCNT;
+        //mutable tricks::Property<uint32_t> CYCCNT;
         mutable tricks::Property<uint32_t> CPICNT;
         mutable tricks::Property<uint32_t> EXCCNT;
         mutable tricks::Property<uint32_t> SLEEPCNT;

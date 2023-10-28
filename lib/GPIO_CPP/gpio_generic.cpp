@@ -11,7 +11,7 @@
  * @date 2023-10-24
  */
 #include "_config.hpp"
-#include "GPIO.hpp"
+#include "gpio.hpp"
 
 #define PIN_FWD(X) X({\
     [this]() { return this->_config.X; },\

@@ -1,41 +1,9 @@
-#include "SSD1306.hpp"
+#include "ssd1306.hpp"
 
 namespace vermils
 {
 namespace ssd1306
 {
-bool I2CDisplay::init() const
-{
-    constexpr uint8_t data[] = {
-        CMD_STREAM,
-        0xae, // display off
-        0xd5, // set display clock divide ratio/oscillator frequency
-        0x80,
-        0xa8, // set multiplex ratio
-        0x3f,
-        0xd3, // set display offset
-        0x0,
-        0x40, // set display start line
-        0xa1, // set segment re-map on
-        0xc8, // set COM output scan direction
-        0xda, // set COM pins hardware configuration
-        0x12,
-        0x20, // set memory addressing mode to page
-        0x02,
-        0x81, // set contrast control
-        0xcf,
-        0xd9, // set pre-charge period
-        0xf1,
-        0xdb, // set VCOMH deselect level
-        0x30,
-        0xa4, // set entire display on/off
-        0xa6, // set normal/inverse display
-        0x8d, // charge pump setting
-        0x14,
-        0xaf, // display on
-    };
-    return i2c.write(address, data, sizeof(data));
-}
 
 /**
  * @brief Set the contrast of the display.
@@ -549,6 +517,100 @@ bool I2CDisplay::nop() const
     };
     return i2c.write(address, data, sizeof(data));
 }
+
+/**
+ * @brief Write data to the display
+ * 
+ * @param data 
+ * @param size 
+ * @return true 
+ * @return false 
+ */
+bool I2CDisplay::write(uint8_t * data, std::size_t size) const
+{
+    bool ret = i2c.select(address, false);
+    if (!ret)
+        ret = i2c.write_byte(DATA_STREAM);
+    for (std::size_t i = 0; i < size; ++i)
+        ret &= i2c.write_byte(data[i]);
+    i2c.end();
+    return ret;
+}
+
+/**
+ * @brief Write a single byte to the display
+ * 
+ * @param value
+ * @return true 
+ * @return false 
+ */
+bool I2CDisplay::set_value(uint8_t value) const
+{
+    uint8_t data[] = 
+    {
+        DATA,
+        value
+    };
+
+    return i2c.write(address, data, sizeof(data));
+}
+
+/**
+ * @brief 
+ * 
+ * @param value 
+ * @return const I2CDisplay& 
+ * @throw SSD1306Exception
+ */
+const I2CDisplay & I2CDisplay::operator << (uint8_t value) const
+{
+    if (set_value(value))
+        return *this;
+    throw SSD1306Exception("Failed to write value");
+}
+
+/**
+ * @brief Fill the display with a value
+ * 
+ * @param value 
+ * @return true 
+ * @return false 
+ */
+bool I2CDisplay::fill(uint8_t value) const
+{
+    bool ret = true;
+    for (uint8_t page=0; page < PAGES; ++page)
+    {
+        ret &= set_cursor(page, 0);
+        if (ret) 
+            ret = start_stream();
+        for (uint8_t col = 0; col < COLS; ++col)
+            ret &= stream_byte(value);
+        end_stream();
+    }
+    return ret;
+}
+
+/**
+ * @brief Get the value at a specified page and column
+ * 
+ * @return uint8_t 
+ */
+uint8_t I2CDisplay::get_value() const
+{
+    if (!i2c.select(address, true))
+        throw SSD1306Exception("Failed to select slave");
+    uint8_t value = i2c.read_byte(false);
+    i2c.end();
+    return value;
+}
+
+bool I2CDisplay::start_stream() const
+{
+    return i2c.select(address, false) && i2c.write_byte(DATA_STREAM);
+}
+
+void I2CDisplay::end_stream() const { return i2c.end(); }
 
 }
 }

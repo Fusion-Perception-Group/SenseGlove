@@ -1,7 +1,7 @@
 #pragma once
 
 #include <exception>
-#include "I2C.hpp"
+#include "i2c.hpp"
 
 namespace vermils
 {
@@ -9,12 +9,17 @@ namespace ssd1306
 {
     class SSD1306Exception : public std::exception
     {
+        const char * msg = "SSD1306Exception";
     public:
+        SSD1306Exception() {}
+        SSD1306Exception(const char *msg): msg(msg) {}
         const char *what() const noexcept override
         {
-            return "SSD1306Exception";
+            return msg;
         }
     };
+    
+    static constexpr uint8_t PAGES = 8, COLS = 128, PAGE_HEIGHT = 8;
 
     class BaseDisplay
     {
@@ -38,20 +43,22 @@ namespace ssd1306
             Page = 0x02
         };
 
-        static constexpr uint8_t PAGES = 8, COLS = 128, PAGE_HEIGHT = 8;
 
         virtual ~BaseDisplay() {}
 
         virtual bool init() const;
         virtual bool set_cursor(uint8_t page, uint8_t col) const;
-        virtual bool fill(uint8_t data) const;
+        virtual bool write(uint8_t * data, std::size_t size) const;
+        virtual bool fill(uint8_t value) const;
         virtual bool clear() const;
-        virtual bool set_value(uint8_t value) const;
+        virtual bool set_value(uint8_t value) const = 0;
         virtual bool set_value(uint8_t page, uint8_t col, uint8_t value) const;
-        virtual uint8_t get_value() const;
+        virtual uint8_t get_value() const = 0;
         virtual uint8_t get_value(uint8_t page, uint8_t col) const;
-        virtual bool operator << (uint8_t) const;
-        virtual bool operator << (const uint8_t []) const;
+        virtual const BaseDisplay & operator << (uint8_t) const = 0;
+        virtual bool start_stream() const { return true; };
+        virtual bool stream_byte(uint8_t value) const { return set_value(value); };
+        virtual void end_stream() const {};
 
         virtual bool set_contrast(uint8_t contrast) const = 0;
         virtual bool set_entire_display_on(bool ignore_gram=false) const = 0;
@@ -112,7 +119,15 @@ namespace ssd1306
                 this->init();
         }
 
-        bool init() const override;
+        //bool init() const override;
+        bool write(uint8_t * data, std::size_t size) const override;
+        bool fill(uint8_t value) const override;
+        bool set_value(uint8_t value) const override;
+        uint8_t get_value() const override;
+        const I2CDisplay & operator << (uint8_t) const override;
+        bool start_stream() const override;
+        bool stream_byte(uint8_t value) const { return i2c.write_byte(value); };
+        void end_stream() const;
 
         bool set_contrast(uint8_t contrast) const override;
         bool set_entire_display_on(bool ignore_gram=false) const override;

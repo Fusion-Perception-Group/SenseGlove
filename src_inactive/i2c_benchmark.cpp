@@ -1,10 +1,14 @@
 #include <string>
 #include "CLK_CFG.h"
-#include "Time.hpp"
+#include "time.hpp"
 //#include "MCU.hpp"
-#include "GPIO.hpp"
-#include "I2C.hpp"
-#include "SSD1306.hpp"
+#include "gpio.hpp"
+#include "i2c.hpp"
+#include "ssd1306.hpp"
+#include "texrender.hpp"
+
+#define FMT_HEADER_ONLY
+#include "ffmt.hpp"
 
 #define LED_PIN 13
 #define LED_GPIO_PORT PortC
@@ -36,20 +40,36 @@ int main()
 
     PinConfig config(
         PinConfig::Output,
-        PinConfig::NoPull,
-        PinConfig::High,
-        PinConfig::PushPull,
-        uint8_t(0),
-        PinConfig::NoEXTI,
-        PinConfig::NoTrigger
+        PinConfig::VeryHigh,
+        PinConfig::PushPull
         );
     Pin led(LED_GPIO_PORT, LED_PIN, config);
 
     Pin scl(PortB, 6), sda(PortB, 7);
     i2c::SoftMaster i2c(sda, scl);
+
+    uint32_t start = timer.get_cycles(), test_size=100;
+    
+    for (unsigned i = 0; i < test_size; ++i)
+    {
+        i2c.write_byte(0xe5);
+    }
+    uint32_t end = timer.get_cycles();
+    double sec = double(end - start) / stm32::SystemCoreClock;
+    double kbps = test_size * 8.0 / 1000 / sec;
+
     timer.delay_ms(100);
     ssd1306::I2CDisplay display(i2c);
-    ret = display.set_entire_display_on(true);
+    //ret &= display.init();
+    //ret &= display.set_entire_display_on(false);
+    //ret &= display.set_entire_display_on(true);
+    //ret &= display.fill(0xAF);
+    display.clear();
+
+    ssd1306::TexRender render(display);
+
+    render.render("I2C Benchmark!\n", 0, 12);
+    render << fstring("Speed: {} kbit/s", kbps).get();
 
     while (ret)
     {

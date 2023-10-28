@@ -228,5 +228,5 @@ double benchmark_I2C(I2C_t *i2c, const unsigned size_byte)
     end = DWT->CYCCNT;
     double sec = (double)(end - start) / HAL_RCC_GetHCLKFreq();
     _terminate_I2C(i2c);
-    return (double)size_byte * 8 / 1000 / sec;
+    return size_byte * 8.0 / 1000 / sec;
 }

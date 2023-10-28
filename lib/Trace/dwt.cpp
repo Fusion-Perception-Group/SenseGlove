@@ -1,4 +1,4 @@
-#include "Trace.hpp"
+#include "trace.hpp"
 #include "_config.hpp"
 
 #define CTRL_BIT_PROP(X) X({\
@@ -30,6 +30,11 @@ namespace vermils
 {
 namespace stm32
 {
+    namespace hidden
+    {
+        volatile uint32_t & CYCCNT = DWT->CYCCNT;
+    }
+
     void enable_trace()
     {
         CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -62,7 +67,7 @@ namespace stm32
         CTRL_BIT_PROP(CYCTAP),
         CTRL_BIT_PROP(SYNCTAP),
         CTRL_BIT_PROP(NUMCOMP),
-        DWT_FWD(CYCCNT),
+        //DWT_FWD(CYCCNT),
         DWT_FWD(CPICNT),
         DWT_FWD(EXCCNT),
         DWT_FWD(SLEEPCNT),

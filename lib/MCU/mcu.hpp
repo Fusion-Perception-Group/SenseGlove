@@ -3,8 +3,8 @@
 #include <string>
 #include <cstdint>
 #include "userconfig.hpp"
-#include "GPIO.hpp"
-#include "Property.hpp"
+#include "gpio.hpp"
+#include "property.hpp"
 
 namespace vermils
 {

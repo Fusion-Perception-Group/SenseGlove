@@ -2,9 +2,9 @@
 
 #include <cstdint>
 #include <exception>
-#include "Property.hpp"
-#include "GPIO.hpp"
-#include "Time.hpp"
+#include "property.hpp"
+#include "gpio.hpp"
+#include "time.hpp"
 
 namespace vermils
 {
@@ -126,11 +126,11 @@ namespace i2c
             bool use_pp_for_hs_ = false, bool start_byte_ = false
             );
         bool detect_busy(u_int32_t timeout_us=100) const;
-        bool write_bit(const bool bit) const noexcept;
+        void write_bit(const bool bit) const;
         bool read_bit() const noexcept;
         bool select(I2CAddrType address, const bool read) const override;
         void end() const override;
-        bool write_byte(const uint8_t data) const override;
+        bool write_byte(const uint8_t data) const noexcept override;
         uint8_t read_byte(const bool acknowledge=true) const override;
         bool write(I2CAddrType address, const uint8_t *data, const std::size_t size) const override;
         std::size_t read(I2CAddrType address, uint8_t *data, const std::size_t maxsize) const override;

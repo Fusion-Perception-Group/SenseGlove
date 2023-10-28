@@ -3,7 +3,7 @@
 #include <string>
 #include <exception>
 #include "userconfig.hpp"
-#include "Property.hpp"
+#include "property.hpp"
 
 namespace vermils
 {
@@ -61,19 +61,19 @@ namespace hidden
 
         void disable_clock() const;
 
-        void set(const uint32_t mask)
+        inline void set(const uint32_t mask)
         {
             BSRR = mask;
         }
 
-        void set(const Pin & pin);
+        inline void set(const Pin & pin);
 
-        void reset(const uint32_t mask)
+        inline void reset(const uint32_t mask)
         {
             BSRR = mask << GPIO_PINS_N;
         }
 
-        void reset(const Pin & pin);
+        inline void reset(const Pin & pin);
 
         bool operator == (const _Port & port) const
         {
@@ -233,7 +233,7 @@ public:
      * @brief Sets the pin to high.
      * 
      */
-    void set() const
+    inline void set() const
     {
         port.BSRR = _mask;
     }
@@ -242,7 +242,7 @@ public:
      * @brief Sets the pin to low.
      * 
      */
-    void reset() const
+    inline void reset() const
     {
         port.BSRR = _mask << GPIO_PINS_N;
     }
@@ -253,7 +253,7 @@ public:
      * @return true: Pin is high.
      * @return false: Pin is low.
      */
-    bool read() const
+    inline bool read() const
     {
         return bool(port.IDR & _mask);
     }
@@ -263,7 +263,7 @@ public:
      * 
      * @param value The value to write.
      */
-    void write(const bool value) const
+    inline void write(const bool value) const
     {
         uint32_t temp = _mask;
         if (!value)
@@ -277,7 +277,7 @@ public:
      * @return true: Pin was high.
      * @return false: Pin was low.
      */
-    bool toggle() const
+    inline bool toggle() const
     {
         uint32_t temp = _mask;
         bool value = bool(port.ODR & temp);
@@ -287,12 +287,12 @@ public:
         return value;
     }
 
-    explicit operator bool () const
+    explicit inline operator bool () const
     {
         return read();
     }
 
-    bool operator = (const bool value) const
+    inline bool operator = (const bool value) const
     {
         write(value);
         return value;

@@ -11,7 +11,7 @@
  * @date 2023-10-24
  */
 #include "_config.hpp"
-#include "GPIO.hpp"
+#include "gpio.hpp"
 
 #if (defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32H7)) && !__VERMIL_STM32_USE_GENERIC && !VERMIL_STM32_USE_CMSIS
 

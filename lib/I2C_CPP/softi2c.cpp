@@ -1,4 +1,4 @@
-#include "I2C.hpp"
+#include "i2c.hpp"
 
 #define REP0(X)
 #define REP1(X) X
@@ -19,6 +19,7 @@
 
 #define __I2C_NOP asm("NOP");
 #define __I2C_SCL_DELAY REP(0, 0, 9, __I2C_NOP);
+#define __I2C_COM_DELAY if (delay_us) timer.delay_us(delay_us);
 
 namespace vermils
 {
@@ -43,8 +44,7 @@ namespace i2c
         scl.io = gpio::PinConfig::IO::Output;
         sda.out_mode = gpio::PinConfig::OutMode::OpenDrain;
         scl.out_mode = gpio::PinConfig::OutMode::OpenDrain;
-        sda.set();
-        scl.set();
+        end();  // Avoid triggering a start condition and release SDA/SCL
     }
 
     /**
@@ -54,7 +54,7 @@ namespace i2c
      * @return true: Written bit is the same as bit
      * @return false: Arbitration lost
      */
-    inline bool SoftMaster::write_bit(const bool bit) const noexcept
+    inline void SoftMaster::write_bit(const bool bit) const
     {
         sda.write(bit);
         __I2C_SCL_DELAY;
@@ -67,14 +67,12 @@ namespace i2c
         if (bit != sda.read())
         {
             _arbitration_lost = true;
-            return false;
+            throw ArbitrationLost();
         }
 
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         scl.reset();
-        timer.delay_us(delay_us);
-
-        return true;
+        __I2C_COM_DELAY;
     }
 
     inline bool SoftMaster::read_bit() const noexcept
@@ -84,36 +82,36 @@ namespace i2c
         // Clock stretching and synchronization
         while(!scl.read());
 
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         bool bit = sda.read();
         scl.reset();
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         return bit;
     }
 
     inline void SoftMaster::_start() const
     {
         sda.set();
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         scl.set();
         // Clock stretching and synchronization
         while(!scl.read());
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         sda.reset();
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         scl.reset();
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
     }
 
     inline void SoftMaster::_terminate() const
     {
         sda.reset();
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         scl.set();
         while(!scl.read());
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
         sda.set();
-        timer.delay_us(delay_us);
+        __I2C_COM_DELAY;
     }
 
     class OutputModeChanger
@@ -194,21 +192,25 @@ namespace i2c
         return true;
     }
 
-    bool SoftMaster::write_byte(const uint8_t data) const
+    inline bool SoftMaster::write_byte(const uint8_t data) const noexcept
     {
-        for (uint_fast8_t c = 0x80; c; c >>= 1)
+        try
         {
-            if (!write_bit(data & c))
+            for (uint_fast8_t c = 0x80; c; c >>= 1)
             {
-                arbitration_lost = true;
-                return false;
+                write_bit(data & c);
             }
         }
-        sda.reset();
+        catch (const ArbitrationLost &e)
+        {
+            sda.set(); // Release SDA
+            return false;
+        }
+        sda.set(); // Release SDA
         return !read_bit(); // 0: ACK, 1: NACK
     }
 
-    uint8_t SoftMaster::read_byte(const bool acknowledge) const
+    inline uint8_t SoftMaster::read_byte(const bool acknowledge) const
     {
         uint_fast8_t data = 0;
         for (uint_fast8_t c = 7; c; --c)
