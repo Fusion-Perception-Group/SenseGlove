@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include "property.hpp"
 
 namespace vermils

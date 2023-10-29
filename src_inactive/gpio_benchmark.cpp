@@ -7,7 +7,7 @@
 #include "ssd1306.hpp"
 #include "texrender.hpp"
 
-//#include "fmt.hpp"
+#define FMT_HEADER_ONLY
 #include "ffmt.hpp"
 
 #define LED_PIN 13
@@ -37,7 +37,6 @@ int main()
     using namespace gpio::ports;
 
     HighResTimer timer;
-    timer.delay_ms(100);
 
     PinConfig config(
         PinConfig::Output,
@@ -46,31 +45,38 @@ int main()
         );
     Pin led(LED_GPIO_PORT, LED_PIN, config);
 
+    Pin scl(PortB, 6), sda(PortB, 7);
 
-    uint32_t start = timer.get_cycles(), test_size=10000;
+    scl.io = PinConfig::Output;
+    scl.out_mode = PinConfig::OpenDrain;
+
+    uint32_t start = timer.get_cycles(), test_size=100;
     
     for (unsigned i = 0; i < test_size; ++i)
     {
-        //auto volatile v = fstring("%5{}, %5{}", "Hello", "World").get();
-        //auto volatile v = ffmt::format("{}, {} {:+^9.2f}", "Hello", "World", 114.514);
-        auto volatile v = ffmt::format("{}, {}", "Hello", "World");
+        scl.set();
+        while(scl.read());
+        scl.reset();
+        while(!scl.read());
     }
     uint32_t end = timer.get_cycles();
     double sec = double(end - start) / stm32::SystemCoreClock;
-    double ksps = test_size / 1000 / sec;
+    double kbps = test_size / 1000.0 / sec;
 
-    Pin scl(PortB, 6), sda(PortB, 7);
     i2c::SoftMaster i2c(sda, scl, 1);
-
+    timer.delay_ms(100);
+    i2c.delay_us = 1;
     ssd1306::I2CDisplay display(i2c);
-    //ret = display.init();
+    //ret &= display.init();
+    //ret &= display.set_entire_display_on(false);
+    //ret &= display.set_entire_display_on(true);
+    //ret &= display.fill(0xAF);
     display.clear();
 
     ssd1306::TexRender render(display);
 
-    render.render("FMT Benchmark!\n", 0, 12);
-    //render << fstring("Speed: {} kstrings/s", ksps).get();
-    render << ffmt::format("Speed:\n{:.3}\nkstrings/s", ksps);
+    render.render("GPIO Benchmark!\n", 0, 12);
+    render << ffmt::format("Speed: {} kflip/s", kbps);
 
     while (ret)
     {

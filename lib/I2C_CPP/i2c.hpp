@@ -125,7 +125,7 @@ namespace i2c
             bool highspeed_ = false, uint8_t master_code_ = 1,
             bool use_pp_for_hs_ = false, bool start_byte_ = false
             );
-        bool detect_busy(u_int32_t timeout_us=100) const;
+        bool detect_busy(uint32_t timeout_us=100) const;
         void write_bit(const bool bit) const;
         bool read_bit() const noexcept;
         bool select(I2CAddrType address, const bool read) const override;

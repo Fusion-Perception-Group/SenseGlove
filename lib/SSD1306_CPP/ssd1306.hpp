@@ -116,7 +116,9 @@ namespace ssd1306
         I2CDisplay(const stm32::i2c::BaseMaster &i2c, const bool init=true): i2c(i2c)
         {
             if (init)
+            {
                 this->init();
+            }
         }
 
         //bool init() const override;

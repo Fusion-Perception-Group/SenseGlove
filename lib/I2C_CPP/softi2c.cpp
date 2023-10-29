@@ -18,7 +18,7 @@
   REP##ONES(X)
 
 #define __I2C_NOP asm("NOP");
-#define __I2C_SCL_DELAY REP(0, 0, 9, __I2C_NOP);
+#define __I2C_SCL_DELAY REP(0, 0, 7, __I2C_NOP);
 #define __I2C_COM_DELAY if (delay_us) timer.delay_us(delay_us);
 
 namespace vermils
@@ -92,12 +92,15 @@ namespace i2c
     inline void SoftMaster::_start() const
     {
         sda.set();
+        __I2C_SCL_DELAY;
         __I2C_COM_DELAY;
         scl.set();
         // Clock stretching and synchronization
         while(!scl.read());
+        __I2C_SCL_DELAY;
         __I2C_COM_DELAY;
         sda.reset();
+        __I2C_SCL_DELAY;
         __I2C_COM_DELAY;
         scl.reset();
         __I2C_COM_DELAY;
@@ -106,9 +109,11 @@ namespace i2c
     inline void SoftMaster::_terminate() const
     {
         sda.reset();
+        __I2C_SCL_DELAY;
         __I2C_COM_DELAY;
         scl.set();
         while(!scl.read());
+        __I2C_SCL_DELAY;
         __I2C_COM_DELAY;
         sda.set();
         __I2C_COM_DELAY;
@@ -196,10 +201,14 @@ namespace i2c
     {
         try
         {
-            for (uint_fast8_t c = 0x80; c; c >>= 1)
-            {
-                write_bit(data & c);
-            }
+            write_bit(data & 0x80);
+            write_bit(data & 0x40);
+            write_bit(data & 0x20);
+            write_bit(data & 0x10);
+            write_bit(data & 0x08);
+            write_bit(data & 0x04);
+            write_bit(data & 0x02);
+            write_bit(data & 0x01);
         }
         catch (const ArbitrationLost &e)
         {
@@ -213,16 +222,26 @@ namespace i2c
     inline uint8_t SoftMaster::read_byte(const bool acknowledge) const
     {
         uint_fast8_t data = 0;
-        for (uint_fast8_t c = 7; c; --c)
-        {
-            data <<= 1;
-            data |= read_bit();
-        }
+        data |= read_bit();
+        data <<= 1;
+        data |= read_bit();
+        data <<= 1;
+        data |= read_bit();
+        data <<= 1;
+        data |= read_bit();
+        data <<= 1;
+        data |= read_bit();
+        data <<= 1;
+        data |= read_bit();
+        data <<= 1;
+        data |= read_bit();
+        data <<= 1;
+        data |= read_bit();
         write_bit(!acknowledge);
         return data;
     }
 
-    bool SoftMaster::detect_busy(u_int32_t timeout_us) const
+    bool SoftMaster::detect_busy(uint32_t timeout_us) const
     {
         uint32_t start = timer.get_us();
         sda.set();

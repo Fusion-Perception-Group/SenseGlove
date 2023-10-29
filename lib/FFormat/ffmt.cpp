@@ -1,47 +1,33 @@
+#define __VERMIL_FFMT_DEBUG 0
+
+
+#if __VERMIL_FFMT_DEBUG
+#include <iostream>
 #include "ffmt.hpp"
 
-namespace vermils
+int main()
 {
-namespace ffmt
-{
-    using std::string;
-    using std::size_t;
+    using namespace vermils::ffmt;
+    int a = 123;
+    HolderContainer phs;
+    char fmt[] = "a = {0:^+020.d}, {1:.e}, {{}";
+    parse(phs, fmt);
+    auto p = phs[0];
+    std::cout << "index " << p.index << std::endl;
+    std::cout << "padding " << p.padding << std::endl;
+    std::cout << "precision " << p.precision << std::endl;
+    std::cout << "align " << (int)p.align << std::endl;
+    std::cout << "format " << (int)p.format << std::endl;
+    std::cout << "fill " << p.fill << std::endl;
+    std::cout << "show_positive " << p.show_positive << std::endl;
+    std::cout << "escape " << p.escape << std::endl;
+    std::cout << "begin " << p.begin << std::endl;
+    std::cout << "end " << p.end << std::endl;
 
-    struct Placeholder
-    {
-        enum Format {
-            Decimal,
-            Hex,
-            Octal,
-            Binary,
-            Float,
-            Scientific,
-        };
-        enum Align {
-            Left,
-            Center,
-            Right,
-        };
-        size_t begin;
-        size_t end;
-        Align align=Right;
-        Format format=Decimal;
-        uint_fast16_t padding=0;
-        uint_fast16_t precision=6;
-        char fill='0';
-        bool show_sign=false;
-    };
+    std::cout << string(fmt).find('{') << std::endl;
 
-    template <typename... T>
-    std::string format(const string & src, const T & ...args)
-    {
-        std::vector<Placeholder> phs;
-        std::string ret;
-        phs.reserve(sizeof...(args));
-    }
+    std::cout << format(fmt, 114514, 0.12345678900987654321) << std::endl;
 
-    template <typename... T>
-    std::string format(std::size_t maxsize, const std::string & src, const T & ...args)
-    {}
+    //std::cout << format("{}", a) << std::endl;
 }
-}
+#endif
