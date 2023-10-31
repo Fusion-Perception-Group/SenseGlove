@@ -1,22 +1,5 @@
 #include "i2c.hpp"
 
-#define REP0(X)
-#define REP1(X) X
-#define REP2(X) REP1(X) X
-#define REP3(X) REP2(X) X
-#define REP4(X) REP3(X) X
-#define REP5(X) REP4(X) X
-#define REP6(X) REP5(X) X
-#define REP7(X) REP6(X) X
-#define REP8(X) REP7(X) X
-#define REP9(X) REP8(X) X
-#define REP10(X) REP9(X) X
-
-#define REP(HUNDREDS,TENS,ONES,X) \
-  REP##HUNDREDS(REP10(REP10(X))) \
-  REP##TENS(REP10(X)) \
-  REP##ONES(X)
-
 #define __I2C_NOP asm("NOP");
 #define __I2C_SCL_DELAY REP(0, 0, 7, __I2C_NOP);
 #define __I2C_COM_DELAY if (delay_us) timer.delay_us(delay_us);
@@ -45,48 +28,6 @@ namespace i2c
         sda.out_mode = gpio::PinConfig::OutMode::OpenDrain;
         scl.out_mode = gpio::PinConfig::OutMode::OpenDrain;
         end();  // Avoid triggering a start condition and release SDA/SCL
-    }
-
-    /**
-     * @brief Writes a bit to slave
-     * 
-     * @param bit 
-     * @return true: Written bit is the same as bit
-     * @return false: Arbitration lost
-     */
-    inline void SoftMaster::write_bit(const bool bit) const
-    {
-        sda.write(bit);
-        __I2C_SCL_DELAY;
-        scl.set();
-
-        // Clock stretching and synchronization
-        while(!scl.read());
-
-        // Arbitration lost test
-        if (bit != sda.read())
-        {
-            _arbitration_lost = true;
-            throw ArbitrationLost();
-        }
-
-        __I2C_COM_DELAY;
-        scl.reset();
-        __I2C_COM_DELAY;
-    }
-
-    inline bool SoftMaster::read_bit() const noexcept
-    {
-        scl.set();
-
-        // Clock stretching and synchronization
-        while(!scl.read());
-
-        __I2C_COM_DELAY;
-        bool bit = sda.read();
-        scl.reset();
-        __I2C_COM_DELAY;
-        return bit;
     }
 
     inline void SoftMaster::_start() const
@@ -263,7 +204,7 @@ namespace i2c
     {
         if (!select(address, false))
             return false;
-        
+
         try
         {
             for (uint_fast8_t i = 0; i < size; ++i)

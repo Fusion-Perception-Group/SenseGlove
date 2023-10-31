@@ -3,6 +3,7 @@
 #include <string>
 #include "ssd1306.hpp"
 #include "font_8x8.hpp"
+#include "ffmt.hpp"
 
 namespace vermils
 {
@@ -45,13 +46,7 @@ namespace ssd1306
 
         TexRender(const BaseDisplay & display, bool wrap=true, Fonts font = Fonts::FONT_8x8): display(display), font(font), wrap(wrap) {}
 
-        bool render_char(char c) const
-        {
-            display.set_cursor(_page, _col);
-            if (_march())
-                display.set_cursor(_page, _col);
-            return display.write((uint8_t *)FONT_8x8[unsigned(c)], 8);
-        }
+        bool render_char(char c) const;
 
         bool render_char(char c, uint8_t page, uint8_t col) const
         {
@@ -71,6 +66,50 @@ namespace ssd1306
             return render(str.c_str(), page, col);
         }
 
+        template <std::integral T>
+        unsigned render(T t) const
+        {
+            std::string str = ffmt::itostr(t);
+            return render(str.c_str());
+        }
+
+        template <std::integral T>
+        unsigned render(T t, uint8_t page, uint8_t col) const
+        {
+            std::string str = ffmt::itostr(t);
+            return render(str.c_str(), page, col);
+        }
+
+        template <std::floating_point T>
+        unsigned render(T t) const
+        {
+            char buffer[24];
+            grisu2::dtoa_milo(t, buffer);
+            return render(buffer);
+        }
+
+        template <std::floating_point T>
+        unsigned render(T t, uint8_t page, uint8_t col) const
+        {
+            char buffer[24];
+            grisu2::dtoa_milo(t, buffer);
+            return render(buffer, page, col);
+        }
+
+        template <typename... T>
+        void format(const std::size_t maxsize, const std::string & src, T && ...args)
+        {
+            auto str = ffmt::format(maxsize, src, std::forward<T>(args)...);
+            render(str);
+        }
+        
+        template <typename... T>
+        void format(const std::string & src, T && ...args)
+        {
+            auto str = ffmt::format(src, std::forward<T>(args)...);
+            render(str);
+        }
+
         const TexRender & operator << (const char * str) const
         {
             render(str);
@@ -86,6 +125,13 @@ namespace ssd1306
         const TexRender & operator << (char c) const
         {
             render_char(c);
+            return *this;
+        }
+
+        template <typename T>
+        const TexRender & operator << (T && t) const
+        {
+            render(std::forward<T>(t));
             return *this;
         }
     };

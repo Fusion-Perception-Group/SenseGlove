@@ -78,11 +78,11 @@ uint8_t BaseDisplay::get_value(uint8_t page, uint8_t col) const
     throw SSD1306Exception("Failed to get value");
 }
 
-bool BaseDisplay::write(uint8_t * data, std::size_t size) const
+bool BaseDisplay::write(const uint8_t * data, std::size_t size) const
 {
-    bool ret = set_cursor(0, 0);
+    bool ret = true;
     for (std::size_t i = 0; i < size; ++i)
-        set_value(data[i]);
+        ret &= set_value(data[i]);
 
     return ret;
 }

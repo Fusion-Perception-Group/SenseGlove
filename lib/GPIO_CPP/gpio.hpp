@@ -26,6 +26,9 @@ inline constexpr uint8_t GPIO_PINS_N = 16;
 class Pin;
 namespace hidden
 {
+    #if __VERMIL_STM32_USE_GENERIC
+    extern volatile uint32_t & BSRR;
+    #endif
     /**
      * @brief GPIO Port Class
      * @warning DO NOT MANNUALLY INSTANTIATE THIS CLASS
@@ -33,28 +36,34 @@ namespace hidden
     class _Port final
     {
     public:
-        #if defined(__VERMIL_STM32F1)
-        volatile uint32_t CRL;      /*!< GPIO port configuration register low,  Address offset: 0x00      */
-        volatile uint32_t CRH;      /*!< GPIO port configuration register high, Address offset: 0x04      */
-        volatile uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x08      */
-        volatile uint32_t ODR;      /*!< GPIO port output data register,        Address offset: 0x0C      */
-        volatile uint32_t BSRR;     /*!< GPIO port bit set/reset register,      Address offset: 0x10      */
-        volatile uint32_t BRR;      /*!< GPIO port bit reset register,          Address offset: 0x14      */
-        volatile uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x18      */
-        #elif defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32H7)
-        volatile uint32_t MODER;    /*!< GPIO port mode register,               Address offset: 0x00      */
-        volatile uint32_t OTYPER;   /*!< GPIO port output type register,        Address offset: 0x04      */
-        volatile uint32_t OSPEEDR;  /*!< GPIO port output speed register,       Address offset: 0x08      */
-        volatile uint32_t PUPDR;    /*!< GPIO port pull-up/pull-down register,  Address offset: 0x0C      */
-        volatile uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x10      */
-        volatile uint32_t ODR;      /*!< GPIO port output data register,        Address offset: 0x14      */
-        volatile uint32_t BSRR;     /*!< GPIO port bit set/reset register,      Address offset: 0x18      */
-        volatile uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x1C      */
-        volatile uint32_t AFR[2];   /*!< GPIO alternate function registers,     Address offset: 0x20-0x24 */
-        #elif __VERMIL_STM32_USE_GENERIC
-        Property<uint32_t> BSRR;
+        #if __VERMIL_STM32_USE_GENERIC
+        volatile uint32_t & BSRR;
+        volatile uint32_t & IDR;
+        volatile uint32_t & ODR;
+        _Port(volatile uint32_t & BSRR, volatile uint32_t & IDR, volatile uint32_t & ODR):
+        BSRR(BSRR), IDR(BSRR), ODR(BSRR) {}
+        #else
+            #if defined(__VERMIL_STM32F1)
+            volatile uint32_t CRL;      /*!< GPIO port configuration register low,  Address offset: 0x00      */
+            volatile uint32_t CRH;      /*!< GPIO port configuration register high, Address offset: 0x04      */
+            volatile uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x08      */
+            volatile uint32_t ODR;      /*!< GPIO port output data register,        Address offset: 0x0C      */
+            volatile uint32_t BSRR;     /*!< GPIO port bit set/reset register,      Address offset: 0x10      */
+            volatile uint32_t BRR;      /*!< GPIO port bit reset register,          Address offset: 0x14      */
+            volatile uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x18      */
+            #elif defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32H7)
+            volatile uint32_t MODER;    /*!< GPIO port mode register,               Address offset: 0x00      */
+            volatile uint32_t OTYPER;   /*!< GPIO port output type register,        Address offset: 0x04      */
+            volatile uint32_t OSPEEDR;  /*!< GPIO port output speed register,       Address offset: 0x08      */
+            volatile uint32_t PUPDR;    /*!< GPIO port pull-up/pull-down register,  Address offset: 0x0C      */
+            volatile uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x10      */
+            volatile uint32_t ODR;      /*!< GPIO port output data register,        Address offset: 0x14      */
+            volatile uint32_t BSRR;     /*!< GPIO port bit set/reset register,      Address offset: 0x18      */
+            volatile uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x1C      */
+            volatile uint32_t AFR[2];   /*!< GPIO alternate function registers,     Address offset: 0x20-0x24 */
+            #endif
+            _Port() = delete;
         #endif
-        _Port() = delete;
         _Port & operator = (const _Port & port) = delete;
 
         void enable_clock() const;
@@ -83,6 +92,7 @@ namespace hidden
         friend class Pin;
     };
 }
+using Port = hidden::_Port;
 
 bool is_valid_port(const hidden::_Port & port);
 bool is_valid_port(const int port_index);
@@ -91,15 +101,21 @@ hidden::_Port & get_port_by_index(const int index);
 
 namespace ports
 {
-    extern hidden::_Port & PortA;
-    extern hidden::_Port & PortB;
-    extern hidden::_Port & PortC;
-    extern hidden::_Port & PortD;
-    extern hidden::_Port & PortE;
-    extern hidden::_Port & PortF;
-    extern hidden::_Port & PortG;
-    extern hidden::_Port & PortH;
-    extern hidden::_Port & PortI;
+    #if __VERMIL_STM32_USE_GENERIC
+    #define __Port_Type hidden::_Port
+    #else
+    #define __Port_Type hidden::_Port &
+    #endif
+    extern __Port_Type PortA;
+    extern __Port_Type PortB;
+    extern __Port_Type PortC;
+    extern __Port_Type PortD;
+    extern __Port_Type PortE;
+    extern __Port_Type PortF;
+    extern __Port_Type PortG;
+    extern __Port_Type PortH;
+    extern __Port_Type PortI;
+    #undef __Port_Type
 }
 using namespace ports;
 

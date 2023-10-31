@@ -95,5 +95,5 @@ void BUTTON_Init()
 
 extern "C" void SysTick_Handler()
 {
-    HAL_IncTick();
+    //HAL_IncTick();
 }

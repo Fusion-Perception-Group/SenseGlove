@@ -48,7 +48,7 @@ namespace ssd1306
 
         virtual bool init() const;
         virtual bool set_cursor(uint8_t page, uint8_t col) const;
-        virtual bool write(uint8_t * data, std::size_t size) const;
+        virtual bool write(const uint8_t * data, std::size_t size) const;
         virtual bool fill(uint8_t value) const;
         virtual bool clear() const;
         virtual bool set_value(uint8_t value) const = 0;
@@ -122,7 +122,7 @@ namespace ssd1306
         }
 
         //bool init() const override;
-        bool write(uint8_t * data, std::size_t size) const override;
+        bool write(const uint8_t * data, std::size_t size) const override;
         bool fill(uint8_t value) const override;
         bool set_value(uint8_t value) const override;
         uint8_t get_value() const override;

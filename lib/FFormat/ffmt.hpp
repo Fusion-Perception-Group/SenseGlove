@@ -3,7 +3,7 @@
 #include <cstddef>      // std::size_t
 #include <cstdint>      // std::uint_fast16_t
 #include <string>       // std::string
-#include <stdexcept>    // std::runtime_error
+#include <stdexcept>    // std::invalid_argument
 #include <cctype>      // isdigit
 #include <vector>       // std::vector
 #include "itostr.hpp"
@@ -113,7 +113,7 @@ inline void parse(HolderContainer & phs, const string & src)
                 {
                     if (!std::isdigit(src[pos]))
                     {
-                        throw std::runtime_error("Invalid Format String");
+                        throw std::invalid_argument("Invalid Format String");
                     }
                     n = 10 * n + src[pos] - '0';
                     ++pos;
@@ -122,7 +122,7 @@ inline void parse(HolderContainer & phs, const string & src)
                 p.index = n;
                 if (src[pos] == '}') goto Loopend;
                 if (src[pos] != ':')
-                    throw std::runtime_error("Invalid Format String");
+                    throw std::invalid_argument("Invalid Format String");
                 ++pos; // skip ':'
             Align:
                 if (src.at(pos) == '.')
@@ -176,7 +176,7 @@ inline void parse(HolderContainer & phs, const string & src)
                 }
                 else
                 {
-                    throw std::runtime_error("Invalid Format String");
+                    throw std::invalid_argument("Invalid Format String");
                 }
             Padding:
                 if (src.at(pos) == '}') goto Loopend;
@@ -186,7 +186,7 @@ inline void parse(HolderContainer & phs, const string & src)
                 }
                 if (src[pos] == '}') goto Loopend;
                 if (src[pos] != '.')
-                    throw std::runtime_error("Invalid Format String");
+                    throw std::invalid_argument("Invalid Format String");
                 ++pos; // skip '.'
             Precision:
                 if (src.at(pos) == '}') goto Loopend;
@@ -231,15 +231,15 @@ inline void parse(HolderContainer & phs, const string & src)
                 }
                 else
                 {
-                    throw std::runtime_error("Invalid Format String");
+                    throw std::invalid_argument("Invalid Format String");
                 }
                 if (src.at(++pos) != '}')
-                    throw std::runtime_error("Invalid Format String");
+                    throw std::invalid_argument("Invalid Format String");
 
         }
         catch (std::out_of_range & e)
         {
-            throw std::runtime_error("Unclosed {} pair");
+            throw std::invalid_argument("Unclosed {} pair");
         }
 
         Loopend:

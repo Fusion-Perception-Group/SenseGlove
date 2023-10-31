@@ -526,11 +526,12 @@ bool I2CDisplay::nop() const
  * @return true 
  * @return false 
  */
-bool I2CDisplay::write(uint8_t * data, std::size_t size) const
+bool I2CDisplay::write(const uint8_t * data, std::size_t size) const
 {
     bool ret = i2c.select(address, false);
     if (!ret)
-        ret = i2c.write_byte(DATA_STREAM);
+        return false;
+    ret = i2c.write_byte(DATA_STREAM);
     for (std::size_t i = 0; i < size; ++i)
         ret &= i2c.write_byte(data[i]);
     i2c.end();

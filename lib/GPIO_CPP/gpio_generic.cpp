@@ -30,35 +30,34 @@ namespace gpio
 {
 
 using hidden::_Port;
-
 namespace ports
 {
-    #ifdef GPIOA_BASE
-    _Port & PortA = *(hidden::_Port*)GPIOA_BASE; // Extern linkage
+    #ifdef GPIOA
+    _Port PortA = _Port(GPIOA->BSRR, GPIOA->IDR, GPIOA->ODR); // Extern linkage
     #endif
-    #ifdef GPIOB_BASE
-    _Port & PortB = *(hidden::_Port*)GPIOB_BASE; // Extern linkage
+    #ifdef GPIOB
+    _Port PortB = _Port(GPIOB->BSRR, GPIOB->IDR, GPIOB->ODR); // Extern linkage
     #endif
-    #ifdef GPIOC_BASE
-    _Port & PortC = *(hidden::_Port*)GPIOC_BASE; // Extern linkage
+    #ifdef GPIOC
+    _Port PortC = _Port(GPIOC->BSRR, GPIOC->IDR, GPIOC->ODR); // Extern linkage
     #endif
-    #ifdef GPIOD_BASE
-    _Port & PortD = *(hidden::_Port*)GPIOD_BASE; // Extern linkage
+    #ifdef GPIOD
+    _Port PortD = _Port(GPIOD->BSRR, GPIOD->IDR, GPIOD->ODR); // Extern linkage
     #endif
-    #ifdef GPIOE_BASE
-    _Port & PortE = *(hidden::_Port*)GPIOE_BASE; // Extern linkage
+    #ifdef GPIOE
+    _Port PortE = _Port(GPIOE->BSRR, GPIOE->IDR, GPIOE->ODR); // Extern linkage
     #endif
-    #ifdef GPIOF_BASE
-    _Port & PortF = *(hidden::_Port*)GPIOF_BASE; // Extern linkage
+    #ifdef GPIOF
+    _Port PortF = _Port(GPIOF->BSRR, GPIOF->IDR, GPIOF->ODR); // Extern linkage
     #endif
-    #ifdef GPIOG_BASE
-    _Port & PortG = *(hidden::_Port*)GPIOG_BASE; // Extern linkage
+    #ifdef GPIOG
+    _Port PortG = _Port(GPIOG->BSRR, GPIOG->IDR, GPIOG->ODR); // Extern linkage
     #endif
-    #ifdef GPIOH_BASE
-    _Port & PortH = *(hidden::_Port*)GPIOH_BASE; // Extern linkage
+    #ifdef GPIOH
+    _Port PortH = _Port(GPIOH->BSRR, GPIOH->IDR, GPIOH->ODR); // Extern linkage
     #endif
-    #ifdef GPIOI_BASE
-    _Port & PortI = *(hidden::_Port*)GPIOI_BASE; // Extern linkage
+    #ifdef GPIOI
+    _Port PortI = _Port(GPIOI->BSRR, GPIOI->IDR, GPIOI->ODR); // Extern linkage
     #endif
 }
 
@@ -175,6 +174,7 @@ int get_port_index(const _Port & port)
 
     throw std::invalid_argument("Port not supported by MCU.");
 }
+
 
 /**
  * @brief Get the port by index

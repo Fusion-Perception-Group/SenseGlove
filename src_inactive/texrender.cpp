@@ -7,8 +7,6 @@
 #include "ssd1306.hpp"
 #include "texrender.hpp"
 
-#define FMT_HEADER_ONLY
-#include "ffmt.hpp"
 
 #define LED_PIN 13
 #define LED_GPIO_PORT PortC
@@ -47,29 +45,25 @@ int main()
 
     Pin scl(PortB, 6), sda(PortB, 7);
     i2c::SoftMaster i2c(sda, scl);
-
-    uint32_t start = timer.get_cycles(), test_size=100;
-    
-    for (unsigned i = 0; i < test_size; ++i)
-    {
-        i2c.write_byte(0xe5);
-    }
-    uint32_t end = timer.get_cycles();
-    double sec = double(end - start) / stm32::SystemCoreClock;
-    double kbps = test_size * 8.0 / 1000 / sec;
-
     timer.delay_ms(100);
     ssd1306::I2CDisplay display(i2c);
     //ret &= display.init();
     //ret &= display.set_entire_display_on(false);
     //ret &= display.set_entire_display_on(true);
-    //ret &= display.fill(0xAF);
-    display.clear();
+    ret &= display.fill(0xAF);
 
     ssd1306::TexRender render(display);
 
-    render.render("I2C Benchmark!\n", 0, 12);
-    render << ffmt::format("Speed: {} kbit/s", kbps);
+    render.render("Hello, world!\n", 0, 0);
+    render << "Goodbye, world!\n";
+    render << "abcdefghijklmnopqrstuvwxyz";
+    render << 'a';
+    render << 'a';
+    render << 123;
+    render << string("This is a string");
+    render.format("I know the answer {}", 42);
+    render.render_char('b', 4, 120);
+    render.render_char('z', 7, 128);
 
     while (ret)
     {
@@ -94,5 +88,5 @@ void BUTTON_Init()
 
 extern "C" void SysTick_Handler()
 {
-    //HAL_IncTick();
+    HAL_IncTick();
 }

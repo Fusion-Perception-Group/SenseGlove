@@ -68,5 +68,31 @@ namespace ssd1306
         return render(str);
     }
 
+    bool TexRender::render_char(char c) const
+    {
+        _march(0);
+        if (!display.set_cursor(_page, _col))
+            return false;
+        
+        if (_col + 8 > COLS)
+        {
+            if (!wrap)
+                return false;
+            _newline();
+        }
+        
+        if (c == '\n' || c == '\r')
+        {
+            _newline();
+            return true;
+        }
+        else
+        {
+            _march();
+            return display.write(FONT_8x8[unsigned(c)], 8);
+        }
+
+    }
+
 }
 }

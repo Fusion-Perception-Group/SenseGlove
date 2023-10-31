@@ -5,6 +5,11 @@
 #include "property.hpp"
 #include "gpio.hpp"
 #include "time.hpp"
+#include "macro.h"
+
+#define __I2C_NOP asm("NOP");
+#define __I2C_SCL_DELAY REP(0, 0, 7, __I2C_NOP);
+#define __I2C_COM_DELAY if (delay_us) timer.delay_us(delay_us);
 
 namespace vermils
 {
@@ -126,8 +131,48 @@ namespace i2c
             bool use_pp_for_hs_ = false, bool start_byte_ = false
             );
         bool detect_busy(uint32_t timeout_us=100) const;
-        void write_bit(const bool bit) const;
-        bool read_bit() const noexcept;
+        /**
+         * @brief Writes a bit to slave
+         * 
+         * @param bit 
+         * @return true: Written bit is the same as bit
+         * @return false: Arbitration lost
+         */
+        void write_bit(const bool bit) const
+        {
+            sda.write(bit);
+            __I2C_SCL_DELAY;
+            scl.set();
+
+            // Clock stretching and synchronization
+            while(!scl.read());
+
+            // Arbitration lost test
+            if (bit != sda.read())
+            {
+                _arbitration_lost = true;
+                throw ArbitrationLost();
+            }
+
+            __I2C_COM_DELAY;
+            scl.reset();
+            __I2C_COM_DELAY;
+        }
+        bool read_bit() const noexcept
+        {
+            sda.set();
+            __I2C_SCL_DELAY;
+            scl.set();
+
+            // Clock stretching and synchronization
+            while(!scl.read());
+
+            __I2C_COM_DELAY;
+            bool bit = sda.read();
+            scl.reset();
+            __I2C_COM_DELAY;
+            return bit;  // return ack bit
+        }
         bool select(I2CAddrType address, const bool read) const override;
         void end() const override;
         bool write_byte(const uint8_t data) const noexcept override;
@@ -142,3 +187,7 @@ namespace i2c
 }
 }
 }
+
+#undef __I2C_NOP
+#undef __I2C_SCL_DELAY
+#undef __I2C_COM_DELAY
