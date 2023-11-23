@@ -2,10 +2,12 @@
 #include "CLK_CFG.h"
 #include "time.hpp"
 //#include "MCU.hpp"
+#include "nvic.hpp"
 #include "gpio.hpp"
 #include "i2c.hpp"
 #include "ssd1306.hpp"
 #include "texrender.hpp"
+#include "ffmt.hpp"
 
 #define LED_PIN 13
 #define LED_GPIO_PORT PortC
@@ -38,11 +40,24 @@ int main()
     i2c::SoftMaster i2c(sda, scl);
     timer.delay_ms(100);
     ssd1306::I2CDisplay display(i2c);
-    ret &= display.fill(0xAF);
+    ret &= display.clear();
 
     ssd1306::TexRender render(display);
 
-    render.render("Hello, world!\n", 0, 0);
+    nvic::set_priority_group(nvic::Pre2_Sub2);
+
+    Pin button(PortA, 0, PinConfig(PinConfig::Input, PinConfig::PullUp, PinConfig::Interrupt, PinConfig::Falling));
+
+    int count = 0;
+
+    button.on_interrupt = [&render, &count]()
+    {
+        render.format_at(0, 0, "Button pressed\n{} times!\n", ++count);
+    };
+
+    button.enable_irq();
+
+    //render.render("Hello, world!\n", 0, 0);
 
     while (ret)
     {

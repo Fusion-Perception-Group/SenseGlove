@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <chrono>
 #include "trace.hpp"
+#include "userconfig.hpp"
 #include "clock.hpp"
 namespace vermils
 {
@@ -9,11 +11,11 @@ namespace stm32
 {
 namespace time
 {
-    class HighResTimer
+    class DWTTimer
     {
         DataWatchpointTrigger dwt = {};
     public:
-        HighResTimer() 
+        DWTTimer() 
         {
             enable_trace();
             dwt.CYCCNTENA = true;
@@ -26,6 +28,11 @@ namespace time
             asm("NOP");
             asm("NOP");
             return bool(dwt.CYCCNT - start);
+        }
+
+        inline void delay(const std::chrono::duration<uint32_t, std::nano> &ns) const
+        {
+            delay_ns(ns.count());
         }
 
         inline void delay_ms(const uint32_t ms) const
@@ -75,6 +82,12 @@ namespace time
             return dwt.CYCCNT / (SystemCoreClock / 1000U);
         }
     };
+
+    #if defined(__VERMIL_STM32HX)
+    // not implemented
+    #else
+    using HighResTimer = DWTTimer;
+    #endif
 }
 }
 }

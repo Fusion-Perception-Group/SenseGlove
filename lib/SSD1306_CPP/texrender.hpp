@@ -48,7 +48,7 @@ namespace ssd1306
 
         bool render_char(char c) const;
 
-        bool render_char(char c, uint8_t page, uint8_t col) const
+        bool render_char(uint8_t page, uint8_t col, char c) const
         {
             _page = page;
             _col = col;
@@ -56,14 +56,14 @@ namespace ssd1306
         }
 
         unsigned render(const char * str) const;
-        unsigned render(const char * str, uint8_t page, uint8_t col) const;
+        unsigned render(uint8_t page, uint8_t col, const char * str) const;
         unsigned render(const std::string & str) const
         {
             return render(str.c_str());
         }
-        unsigned render(const std::string & str, uint8_t page, uint8_t col) const
+        unsigned render(uint8_t page, uint8_t col, const std::string & str) const
         {
-            return render(str.c_str(), page, col);
+            return render(page, col, str.c_str());
         }
 
         template <std::integral T>
@@ -74,35 +74,49 @@ namespace ssd1306
         }
 
         template <std::integral T>
-        unsigned render(T t, uint8_t page, uint8_t col) const
+        unsigned render(uint8_t page, uint8_t col, T t) const
         {
             std::string str = ffmt::itostr(t);
-            return render(str.c_str(), page, col);
+            return render(page, col, str.c_str());
         }
 
         template <std::floating_point T>
         unsigned render(T t) const
         {
             char buffer[24];
-            grisu2::dtoa_milo(t, buffer);
+            ffmt::grisu2::dtoa_milo(t, buffer);
             return render(buffer);
         }
 
         template <std::floating_point T>
-        unsigned render(T t, uint8_t page, uint8_t col) const
+        unsigned render(uint8_t page, uint8_t col, T t) const
         {
             char buffer[24];
-            grisu2::dtoa_milo(t, buffer);
-            return render(buffer, page, col);
+            ffmt::grisu2::dtoa_milo(t, buffer);
+            return render(page, col, buffer);
         }
 
         template <typename... T>
-        void format(const std::size_t maxsize, const std::string & src, T && ...args)
+        void formatn_at(uint8_t page, uint8_t col, const std::size_t maxsize, const std::string & src, T && ...args)
+        {
+            auto str = ffmt::format(maxsize, src, std::forward<T>(args)...);
+            render(page, col, str);
+        }
+
+        template <typename... T>
+        void format_at(uint8_t page, uint8_t col, const std::string & src, T && ...args)
+        {
+            auto str = ffmt::format(src, std::forward<T>(args)...);
+            render(page, col, str);
+        }
+
+        template <typename... T>
+        void formatn(const std::size_t maxsize, const std::string & src, T && ...args)
         {
             auto str = ffmt::format(maxsize, src, std::forward<T>(args)...);
             render(str);
         }
-        
+
         template <typename... T>
         void format(const std::string & src, T && ...args)
         {

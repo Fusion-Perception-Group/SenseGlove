@@ -61,7 +61,7 @@ namespace ssd1306
         return count;
     }
 
-    unsigned TexRender::render(const char * str, uint8_t page, uint8_t col) const
+    unsigned TexRender::render(uint8_t page, uint8_t col, const char * str) const
     {
         _page = page;
         _col = col;

@@ -200,6 +200,15 @@ namespace i2c
         return true;
     }
 
+    /**
+     * @brief write data to I2C bus
+     * 
+     * @param address 
+     * @param data 
+     * @param size 
+     * @return `bool`
+     * @throw `ArbitrationLost`
+     */
     bool SoftMaster::write(I2CAddrType address, const uint8_t *data, const std::size_t size) const
     {
         if (!select(address, false))
@@ -222,6 +231,15 @@ namespace i2c
         return true;
     }
 
+    /**
+     * @brief read data from I2C bus
+     * 
+     * @param address 
+     * @param data 
+     * @param maxsize 
+     * @return `std::size_t`
+     * @throw `ArbitrationLost`
+     */
     std::size_t SoftMaster::read(I2CAddrType address, uint8_t *data, const std::size_t maxsize) const
     {
         std::size_t size = 0;

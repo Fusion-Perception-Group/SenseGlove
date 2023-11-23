@@ -220,6 +220,9 @@ Pin::Pin(_Port & port, const uint8_t pin):
  */
 void _Port::enable_clock() const
 {
+    #ifdef __HAL_RCC_AFIO_CLK_ENABLE
+    __HAL_RCC_AFIO_CLK_ENABLE();
+    #endif
     if constexpr(false)
     {}
     #if defined(GPIOA_BASE)

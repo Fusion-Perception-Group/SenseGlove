@@ -388,6 +388,9 @@ Pin::Pin(hidden::_Port & port, const uint8_t pin, const PinConfig & config):
  */
 void _Port::enable_clock() const
 {
+    #ifdef __HAL_RCC_AFIO_CLK_ENABLE
+    __HAL_RCC_AFIO_CLK_ENABLE();
+    #endif
     [[maybe_unused]] volatile uint32_t temp;
     uint32_t mask = 1U << get_port_index(*this);
     RCC->AHB1ENR |= mask;

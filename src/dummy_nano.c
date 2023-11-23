@@ -3,9 +3,9 @@
  * @brief Get rid of stupid warnings from newlib nano
  * @version 0.1
  * @date 2023-10-29
- * 
+ *
  * @copyright Copyright (c) 2023
- * 
+ *
  */
 
 #ifdef __cplusplus
@@ -17,7 +17,6 @@ extern "C"
     }
     void _lseek()
     {
-
     }
     void _read()
     {

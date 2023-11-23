@@ -2,8 +2,10 @@
 
 #include <string>
 #include <stdexcept>
+#include <functional>
 #include "userconfig.hpp"
 #include "property.hpp"
+#include "nvic.hpp"
 
 namespace vermils
 {
@@ -11,6 +13,8 @@ namespace stm32
 {
 namespace gpio
 {
+using CallbackType = std::function<void()>;
+
  class GPIOException : public std::exception
  {
 public:
@@ -37,11 +41,11 @@ namespace hidden
     {
     public:
         #if __VERMIL_STM32_USE_GENERIC
-        volatile uint32_t & BSRR;
-        volatile uint32_t & IDR;
-        volatile uint32_t & ODR;
-        _Port(volatile uint32_t & BSRR, volatile uint32_t & IDR, volatile uint32_t & ODR):
-        BSRR(BSRR), IDR(BSRR), ODR(BSRR) {}
+            volatile uint32_t & BSRR;
+            volatile uint32_t & IDR;
+            volatile uint32_t & ODR;
+            _Port(volatile uint32_t & BSRR, volatile uint32_t & IDR, volatile uint32_t & ODR):
+            BSRR(BSRR), IDR(BSRR), ODR(BSRR) {}
         #else
             #if defined(__VERMIL_STM32F1)
             volatile uint32_t CRL;      /*!< GPIO port configuration register low,  Address offset: 0x00      */
@@ -91,6 +95,8 @@ namespace hidden
 
         friend class Pin;
     };
+
+    extern CallbackType interrupt_callbacks[GPIO_PINS_N];
 }
 using Port = hidden::_Port;
 
@@ -102,9 +108,9 @@ hidden::_Port & get_port_by_index(const int index);
 namespace ports
 {
     #if __VERMIL_STM32_USE_GENERIC
-    #define __Port_Type hidden::_Port
+        #define __Port_Type hidden::_Port
     #else
-    #define __Port_Type hidden::_Port &
+        #define __Port_Type hidden::_Port &
     #endif
     extern __Port_Type PortA;
     extern __Port_Type PortB;
@@ -220,6 +226,23 @@ public:
         [this]() -> uint32_t { return _mask; }
     };
 
+    tricks::Property<CallbackType> on_interrupt{
+        [this]() -> CallbackType {
+                if (_pin >= GPIO_PINS_N)
+                {
+                    return nullptr;
+                }
+                return hidden::interrupt_callbacks[_pin];
+            },
+        [this](const CallbackType value) {
+                if (_pin >= GPIO_PINS_N)
+                {
+                    return;
+                }
+                hidden::interrupt_callbacks[_pin] = value;
+            }
+    };
+
     Pin(hidden::_Port & port, const uint8_t pin);
     Pin(hidden::_Port & port, const uint8_t pin, const PinConfig & config);
 
@@ -249,7 +272,7 @@ public:
      * @brief Sets the pin to high.
      * 
      */
-    inline void set() const
+    inline void set() const noexcept
     {
         port.BSRR = _mask;
     }
@@ -258,7 +281,7 @@ public:
      * @brief Sets the pin to low.
      * 
      */
-    inline void reset() const
+    inline void reset() const noexcept
     {
         port.BSRR = _mask << GPIO_PINS_N;
     }
@@ -269,7 +292,7 @@ public:
      * @return true: Pin is high.
      * @return false: Pin is low.
      */
-    inline bool read() const
+    inline bool read() const noexcept
     {
         return bool(port.IDR & _mask);
     }
@@ -279,7 +302,7 @@ public:
      * 
      * @param value The value to write.
      */
-    inline void write(const bool value) const
+    inline void write(const bool value) const noexcept
     {
         uint32_t temp = _mask;
         if (!value)
@@ -293,7 +316,7 @@ public:
      * @return true: Pin was high.
      * @return false: Pin was low.
      */
-    inline bool toggle() const
+    inline bool toggle() const noexcept
     {
         uint32_t temp = _mask;
         bool value = bool(port.ODR & temp);
@@ -303,38 +326,84 @@ public:
         return value;
     }
 
-    explicit inline operator bool () const
+    explicit inline operator bool () const noexcept
     {
         return read();
     }
 
-    inline bool operator = (const bool value) const
+    inline bool operator = (const bool value) const noexcept
     {
         write(value);
         return value;
     }
 
-    bool operator == (const bool value) const
+    /**
+     * @brief Get the irq object
+     * 
+     * @return nvic::IRQn_Type 
+     * @throw GPIOException if the pin is not valid.
+     */
+    nvic::IRQn_Type get_irq() const
+    {
+        switch(_pin)
+        {
+            case 0: return nvic::EXTI0_IRQn;
+            case 1: return nvic::EXTI1_IRQn;
+            case 2: return nvic::EXTI2_IRQn;
+            case 3: return nvic::EXTI3_IRQn;
+            case 4: return nvic::EXTI4_IRQn;
+            case 5: case 6: case 7: case 8: case 9:
+                return nvic::EXTI9_5_IRQn;
+            case 10: case 11: case 12: case 13: case 14: case 15:
+                return nvic::EXTI15_10_IRQn;
+            default: throw GPIOException();
+        }
+    }
+
+    /**
+     * @brief Enable the interrupt.
+     * 
+     * @throw GPIOException if the pin is not valid.
+     */
+    void enable_irq() const
+    {
+        nvic::enable_irq(get_irq());
+    }
+
+    /**
+     * @brief Enable the interrupt.
+     * 
+     * @param priority The priority of the interrupt.
+     * @throw GPIOException if the pin is not valid.
+     */
+    void enable_irq(uint8_t priority)
+    {
+        auto irqn = get_irq();
+        nvic::enable_irq(irqn);
+        nvic::set_priority(irqn, priority);
+    }
+
+    bool operator == (const bool value) const noexcept
     {
         return read() == value;
     }
 
-    bool operator == (const Pin & pin) const
+    bool operator == (const Pin & pin) const noexcept
     {
         return port == pin.port && _pin == pin._pin;
     }
 
-    uint32_t operator | (const uint32_t mask) const
+    uint32_t operator | (const uint32_t mask) const noexcept
     {
         return _mask | mask;
     }
 
-    uint32_t operator | (const Pin & pin) const
+    uint32_t operator | (const Pin & pin) const noexcept
     {
         return _mask | pin._mask;
     }
 
-    uint32_t operator ~ () const
+    uint32_t operator ~ () const noexcept
     {
         return ~_mask;
     }
