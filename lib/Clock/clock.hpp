@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "tim.hpp"
 namespace vermils
 {
 namespace stm32

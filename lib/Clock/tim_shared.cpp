@@ -316,9 +316,9 @@ static inline TIM_ClockConfigTypeDef ClockConfigConv(const ClockSourceConfig & c
     return clock_config;
 }
 
-void BasicTimer::set_time_base(const TimeBaseConfig &config)
+void BasicTimer::set_time_base(const TimeBaseConfig &config) noexcept
 {
-    auto htim = enable_clock(*this);
+    auto & htim = enable_clock(*this);
 
     htim.Init = TimeBaseConfigConv(config);
     htim.Init.Period = std::min(htim.Init.Period, MAX_PERIOD);
@@ -327,14 +327,75 @@ void BasicTimer::set_time_base(const TimeBaseConfig &config)
     HAL_TIM_Base_Init(&htim);
 }
 
-void BasicTimer::set_clock_source(const ClockSourceConfig &config)
+void BasicTimer::set_clock_source(const ClockSourceConfig &config) noexcept
 {
-    auto htim = enable_clock(*this);
+    auto & htim = enable_clock(*this);
 
     auto clock_config = ClockConfigConv(config);
     clock_config.ClockFilter = std::min<uint8_t>(config.filter, 0xFU);
 
     HAL_TIM_ConfigClockSource(&htim, &clock_config);
+}
+
+void BasicTimer::set_master(const MasterConfig &config) noexcept
+{
+    auto & htim = enable_clock(*this);
+
+    uint32_t master_output_trigger;
+
+    switch(config.mode)
+    {
+        case MasterTriggerMode::Reset:
+            master_output_trigger = TIM_TRGO_RESET;
+            break;
+        case MasterTriggerMode::Enable:
+            master_output_trigger = TIM_TRGO_ENABLE;
+            break;
+        case MasterTriggerMode::Update:
+            master_output_trigger = TIM_TRGO_UPDATE;
+            break;
+        case MasterTriggerMode::ComparePulse:
+            master_output_trigger = TIM_TRGO_OC1;
+            break;
+        case MasterTriggerMode::OutputCompare1:
+            master_output_trigger = TIM_TRGO_OC1REF;
+            break;
+        case MasterTriggerMode::OutputCompare2:
+            master_output_trigger = TIM_TRGO_OC2REF;
+            break;
+        case MasterTriggerMode::OutputCompare3:
+            master_output_trigger = TIM_TRGO_OC3REF;
+            break;
+        case MasterTriggerMode::OutputCompare4:
+            master_output_trigger = TIM_TRGO_OC4REF;
+            break;
+    }
+    reg.CR2 = (reg.CR2 & ~TIM_CR2_MMS) | master_output_trigger;
+
+    if (IS_TIM_SLAVE_INSTANCE(htim.Instance))
+        reg.SMCR = (reg.SMCR & ~TIM_SMCR_MSM) | master_output_trigger;
+}
+
+void BasicTimer::enable_reload_irq() const noexcept
+{
+    enable_clock(*this);
+    reg.DIER |= TIM_IT_UPDATE; // enable interrupt
+    reg.SR = ~TIM_IT_UPDATE; // clear pending interrupt
+    nvic::enable_irq(reload_irqn);
+}
+
+void BasicTimer::disable_reload_irq() const noexcept
+{
+    nvic::disable_irq(reload_irqn);
+    reg.DIER &= ~TIM_IT_UPDATE; // disable interrupt
+}
+
+extern "C"
+{
+    void TIM2_IRQHandler()
+    {
+        clock::Timer2.global_irq_handler();
+    }
 }
 
 }

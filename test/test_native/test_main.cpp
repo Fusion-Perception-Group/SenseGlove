@@ -62,6 +62,9 @@ void test_ffmt()
     TEST_ASSERT_EQUAL_STRING("a = 0", format("a = {:}", 0).data());
     TEST_ASSERT_EQUAL_STRING("0x7b", format("0x{:.x}", a).data());
 
+    TEST_ASSERT_EQUAL_STRING("true", format("{}", true).data());
+    TEST_ASSERT_EQUAL_STRING("false", format("{}", false).data());
+
     TEST_ASSERT_EQUAL_STRING("d = +00123.321", format("d = {:+010.3}", d).data());
     TEST_ASSERT_EQUAL_STRING("d = 123.321000", format("d = {:<010.3}", 123.321).data());
     TEST_ASSERT_EQUAL_STRING("1.23321e2", format("{:.5e}", d).data());

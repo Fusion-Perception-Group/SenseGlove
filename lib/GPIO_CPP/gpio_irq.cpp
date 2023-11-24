@@ -19,8 +19,8 @@ namespace hidden
 {
     CallbackType interrupt_callbacks[GPIO_PINS_N] = {nullptr};
 
-    static inline void cb_handler(const uint32_t pin_mask)
-    {
+    static inline void cb_handler(const uint32_t pin_mask) noexcept
+    try{
         const uint8_t pin_index = __builtin_ctz(pin_mask);
 
         if (pin_index >= GPIO_PINS_N)
@@ -29,8 +29,11 @@ namespace hidden
         if (interrupt_callbacks[pin_index] != nullptr)
             interrupt_callbacks[pin_index]();
     }
+    catch(...)
+    {
+    }
 
-    static inline void exti_handler(const uint32_t mask)
+    static inline void exti_handler(const uint32_t mask) noexcept
     {
         uint32_t its_mask = GET_IT(mask);
         CLEAR_IT(its_mask);
@@ -80,7 +83,17 @@ namespace hidden
             exti_handler(GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
         }
     }
+
+} // namespace hidden
+void Pin::trigger_irq() const noexcept
+{
+    #ifdef __VERMIL_STM32HX
+    EXTI->SWIER1 |= mask;
+    #else
+    EXTI->SWIER |= mask;
+    #endif
 }
+
 } // namespace gpio
 } // namespace stm32
 } // namespace vermils

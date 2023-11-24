@@ -12,28 +12,29 @@
 extern "C"
 {
 #endif
-    void _close()
+#define __weak __attribute__((weak))
+    __weak void _close()
     {
     }
-    void _lseek()
+    __weak void _lseek()
     {
     }
-    void _read()
+    __weak void _read()
     {
     }
-    void _write()
+    __weak void _write()
     {
     }
-    void _fstat_r()
+    __weak void _fstat_r()
     {
     }
-    void _isatty_r()
+    __weak void _isatty_r()
     {
     }
-    void _getpid_r()
+    __weak void _getpid_r()
     {
     }
-    void _kill_r()
+    __weak void _kill_r()
     {
     }
 #ifdef __cplusplus

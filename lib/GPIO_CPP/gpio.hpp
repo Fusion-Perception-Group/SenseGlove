@@ -338,12 +338,12 @@ public:
     }
 
     /**
-     * @brief Get the irq object
+     * @brief Get the irqn object
      * 
      * @return nvic::IRQn_Type 
      * @throw GPIOException if the pin is not valid.
      */
-    nvic::IRQn_Type get_irq() const
+    nvic::IRQn_Type get_irqn() const
     {
         switch(_pin)
         {
@@ -365,22 +365,31 @@ public:
      * 
      * @throw GPIOException if the pin is not valid.
      */
-    void enable_irq() const
+    void enable_irq() const noexcept
     {
-        nvic::enable_irq(get_irq());
+        nvic::enable_irq(get_irqn());
     }
 
     /**
-     * @brief Enable the interrupt.
+     * @brief Set the irq priority object
      * 
-     * @param priority The priority of the interrupt.
-     * @throw GPIOException if the pin is not valid.
+     * @param priority 
+     * @throw invalid_argument if the priority is not valid.
      */
-    void enable_irq(uint8_t priority)
+    void set_irq_priority(const uint8_t priority) const
     {
-        auto irqn = get_irq();
-        nvic::enable_irq(irqn);
-        nvic::set_priority(irqn, priority);
+        nvic::set_priority(get_irqn(), priority);
+    }
+
+    /**
+     * @brief trigger exti by software
+     * 
+     */
+    void trigger_irq() const noexcept;
+
+    void disable_irq() const noexcept
+    {
+        nvic::disable_irq(get_irqn());
     }
 
     bool operator == (const bool value) const noexcept
