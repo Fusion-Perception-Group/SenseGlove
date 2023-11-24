@@ -48,9 +48,9 @@ enum IRQn_Type
     FDCAN1_IT1_IRQn = 21,         /*!< FDCAN1 Interrupt line 1                                           */
     FDCAN2_IT1_IRQn = 22,         /*!< FDCAN2 Interrupt line 1                                           */
     EXTI9_5_IRQn = 23,            /*!< External Line[9:5] Interrupts                                     */
-    TIM1_BRK_IRQn = 24,           /*!< TIM1 Break Interrupt                                              */
-    TIM1_UP_IRQn = 25,            /*!< TIM1 Update Interrupt                                             */
-    TIM1_TRG_COM_IRQn = 26,       /*!< TIM1 Trigger and Commutation Interrupt                            */
+    TIM1_BRK_TIM9_IRQn = 24,      /*!< TIM1 Break interrupt and TIM9 global interrupt                    */
+    TIM1_UP_TIM10_IRQn = 25,      /*!< TIM1 Update Interrupt and TIM10 global interrupt                  */
+    TIM1_TRG_COM_TIM11_IRQn = 26, /*!< TIM1 Trigger and Commutation Interrupt and TIM11 global interrupt */
     TIM1_CC_IRQn = 27,            /*!< TIM1 Capture Compare Interrupt                                    */
     TIM2_IRQn = 28,               /*!< TIM2 global Interrupt                                             */
     TIM3_IRQn = 29,               /*!< TIM3 global Interrupt                                             */

@@ -75,7 +75,7 @@ int main()
 
     ssd1306::TexRender render(display);
 
-    render.render("GPIO Benchmark!\n", 0, 12);
+    render.render(0, 12, "GPIO Benchmark!\n");
     render << ffmt::format("Speed: {} kflip/s", kbps);
 
     while (ret)

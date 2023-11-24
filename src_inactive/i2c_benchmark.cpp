@@ -68,7 +68,7 @@ int main()
 
     ssd1306::TexRender render(display);
 
-    render.render("I2C Benchmark!\n", 0, 12);
+    render.render(0, 12, "I2C Benchmark!\n");
     render << ffmt::format("Speed: {} kbit/s", kbps);
 
     while (ret)

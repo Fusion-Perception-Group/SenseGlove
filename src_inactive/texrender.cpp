@@ -54,7 +54,7 @@ int main()
 
     ssd1306::TexRender render(display);
 
-    render.render("Hello, world!\n", 0, 0);
+    render.render(0, 0, "Hello, world!\n");
     render << "Goodbye, world!\n";
     render << "abcdefghijklmnopqrstuvwxyz";
     render << 'a';
@@ -62,8 +62,8 @@ int main()
     render << 123;
     render << string("This is a string");
     render.format("I know the answer {}", 42);
-    render.render_char('b', 4, 120);
-    render.render_char('z', 7, 128);
+    render.render_char(4, 120, 'b');
+    render.render_char(7, 128, 'z');
 
     while (ret)
     {

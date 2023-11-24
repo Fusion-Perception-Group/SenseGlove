@@ -13,12 +13,12 @@ namespace time
 {
     class DWTTimer
     {
-        DataWatchpointTrigger dwt = {};
+        dwt::DataWatchpointTrigger dwt = {};
     public:
         DWTTimer() 
         {
-            enable_trace();
-            dwt.CYCCNTENA = true;
+            dwt::enable_trace();
+            dwt.enable();
         }
 
         bool is_alive() const

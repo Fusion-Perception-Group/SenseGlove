@@ -68,7 +68,7 @@ int main()
 
     ssd1306::TexRender render(display);
 
-    render.render("FMT Benchmark!\n", 0, 12);
+    render.render(0, 12, "FMT Benchmark!\n");
     //render << fstring("Speed: {} kstrings/s", ksps).get();
     render << ffmt::format("Speed:\n{:.3}\nkstrings/s", ksps);
 

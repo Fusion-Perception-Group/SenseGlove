@@ -4,7 +4,6 @@
 #include "userconfig.hpp"
 #include "nvic.hpp"
 #include "property.hpp"
-#include "gpio.hpp"
 
 namespace vermils
 {
@@ -193,7 +192,7 @@ struct CaptureCompareConfig
     OutputCompareMode output_mode = OutputCompareMode::Frozen;
     uint32_t pulse = 0;  // value to be loaded into the capture/compare register
     bool inverse_polarity = false;  // whether to use low as the active output for capture/compare
-    bool output_n_low = false;  // whether to use low as the active output for capture/compare complementary
+    bool inverse_n_polarity = false;  // whether to use low as the active output for capture/compare complementary
     bool idle_state = false;  // true for high, false for low
     bool idle_n_state = false;  // true for high, false for low
     bool fast_mode = false;  // whether to use fast mode for pwm
@@ -205,6 +204,40 @@ struct CaptureCompareConfig
 
 class BasicTimer
 {
+protected:
+    template <typename T>
+    struct _Property : tricks::StaticProperty<T, BasicTimer &>
+    {
+        using tricks::StaticProperty<T, BasicTimer &>::StaticProperty;
+        using tricks::StaticProperty<T, BasicTimer &>::operator=;
+    };
+    struct _AutoReloadPreload : public _Property<bool>
+    {
+        using _Property<bool>::_Property;
+        using _Property<bool>::operator=;
+        bool getter() const override { return owner.reg.CR1 & 0x80U; }
+        void setter(const bool value) override {
+            owner.reg.CR1 = value ? (owner.reg.CR1|0x80U) : (owner.reg.CR1&~0x80U);
+        }
+    };
+    struct _Enabled : public _Property<bool>
+    {
+        using _Property<bool>::_Property;
+        using _Property<bool>::operator=;
+        bool getter() const override { return owner.reg.CR1 & 0x01U; }
+        void setter(const bool value) override {
+            if (value) owner.start(); else owner.stop();
+        }
+    };
+    struct _Direction : public _Property<bool>
+    {
+        using _Property<bool>::_Property;
+        using _Property<bool>::operator=;
+        bool getter() const override { return owner.reg.CR1 & 0x10U; }
+        void setter(const bool value) override {
+            owner.reg.CR1 = value ? (owner.reg.CR1|0x10U) : (owner.reg.CR1&~0x10U);
+        }
+    };
 public:
     detail::Register &reg;
     volatile uint32_t & counter;
@@ -214,19 +247,11 @@ public:
     const uint32_t MAX_PERIOD;
     const uint32_t MAX_PRESCALER;
     const uint32_t MAX_REP_COUNTER;
-    tricks::Property<bool> auto_reload_preload{
-        [this]() -> bool { return reg.CR1 & 0x80U; },
-        [this](bool value) -> void { reg.CR1 = value ? (reg.CR1|0x80U) : (reg.CR1&~0x80U); }
-    };
-    tricks::Property<bool> enabled{  /* time base enabled */
-        [this]() -> bool { return reg.CR1 & 0x01U; },
-        [this](bool value) -> void { if (value) this->start(); else this->stop(); }
-    };
-    tricks::Property<bool> direction{ /* true for down, false for up */
-        [this]() -> bool { return reg.CR1 & 0x10U; },
-        [this](bool value) -> void { reg.CR1 = value ? (reg.CR1|0x10U) : (reg.CR1&~0x10U); }
-    };
+    _AutoReloadPreload auto_reload_preload = _AutoReloadPreload(*this);
+    _Enabled enabled = _Enabled(*this);
+    _Direction direction = _Direction(*this);
     CallbackType on_reload = nullptr;  /* on overflow and underflow */
+    CallbackType on_trigger = nullptr;  /* on trigger event from ITRx, TI1...etc */
     
     BasicTimer(detail::Register &reg, nvic::IRQn_Type r_irqn)
         : BasicTimer(reg, r_irqn, ClockSourceConfig(), TimeBaseConfig())
@@ -287,35 +312,54 @@ public:
         prescaler = value;
     }
 
-    void enable_reload_irq() const noexcept;
+    void enable_irq() const noexcept;
 
-    void set_reload_irq_priority(const uint8_t priority) const
+    void set_irq_priority(const uint8_t priority) const
     {
         nvic::set_priority(reload_irqn, priority);
     }
 
-    void disable_reload_irq() const noexcept;
+    void disable_irq() const noexcept;
 
     void on_reload_handler() const noexcept
     try{
         const uint32_t UPDATE_MASK = 0x01U;
-        if (reg.SR & UPDATE_MASK &&  // check if flag is set
-            reg.DIER & UPDATE_MASK &&  // check if source is enabled
-            on_reload)  // check if callback is set
+        if (reg.SR & UPDATE_MASK)  // check if flag is set
         {
-            on_reload();
+            reg.SR = ~UPDATE_MASK; // clear pending interrupt
+            if (reg.DIER & UPDATE_MASK &&  // check if source is enabled
+                on_reload)  // check if callback is set
+            {
+                on_reload();
+            }
         }
-
-        reg.SR = ~UPDATE_MASK; // clear pending interrupt
     }
     catch(...)
     {
         // do nothing
     }
 
+    void on_trigger_handler() const noexcept
+    try{
+        const uint32_t FLAG_MASK = 0x40U;
+        if (reg.SR & FLAG_MASK)  // check if flag is set
+        {
+            reg.SR = ~FLAG_MASK; // clear pending interrupt
+            if (reg.DIER & FLAG_MASK &&  // check if source is enabled
+                on_trigger)  // check if callback is set
+            {
+                on_trigger();
+            }
+        }
+    }
+    catch(...)
+    {
+    }
+
     void global_irq_handler() const noexcept
     {
         on_reload_handler();
+        on_trigger_handler();
     }
 
     bool operator==(const BasicTimer &rhs) const
@@ -327,10 +371,128 @@ public:
 class BaseGeneralPurposeTimer : public BasicTimer
 {
 public:
+    using BasicTimer::BasicTimer;
     class Channel
     {
+    protected:
         using T = BaseGeneralPurposeTimer;
         T &_timer;
+        template <typename T>
+        struct _Property : tricks::StaticProperty<T, Channel &>
+        {
+            using tricks::StaticProperty<T, Channel &>::StaticProperty;
+            using tricks::StaticProperty<T, Channel &>::operator=;
+        };
+        struct _Enabled : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.CCER & (1U << (owner.order * 4)); }
+            void setter(const bool value) override {
+                if (value) owner.enable(); else owner.disable();
+            }
+        };
+        struct _InversePolarity : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.CCER & (0x2U << (owner.order * 4)); }
+            void setter(const bool value) override {
+                const uint32_t mask = 0x2U << (owner.order * 4);
+                owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (value ? mask : 0);
+            }
+        };
+        struct _OutputPreloadEnabled : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner.CCMRx & (1U << ((owner.order%2) * 8 + 3)); }
+            void setter(const bool value) override {
+                const uint32_t mask = 1U << ((owner.order%2) * 8 + 3);
+                owner.CCMRx = (owner.CCMRx & ~mask) | (value ? mask : 0);
+            }
+        };
+        struct _PWMFastMode : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner.CCMRx & (1U << ((owner.order%2) * 8 + 2)); }
+            void setter(const bool value) override {
+                const uint32_t mask = 1U << ((owner.order%2) * 8 + 2);
+                owner.CCMRx = (owner.CCMRx & ~mask) | (value ? mask : 0);
+            }
+        };
+        struct _OutputCompareMode : public _Property<OutputCompareMode>
+        {
+            using _Property<OutputCompareMode>::_Property;
+            using _Property<OutputCompareMode>::operator=;
+            OutputCompareMode getter() const override {
+                uint32_t tmp;
+                const bool mod1 = (owner.order % 2);
+                tmp = owner.CCMRx;
+                tmp &= (mod1 ? 0x7300U : 0x73U);
+                tmp >>= (mod1 ? 8U : 0U);
+                return static_cast<OutputCompareMode>(tmp);
+            }
+            void setter(const OutputCompareMode value) override {
+                uint32_t tmp;
+                const uint32_t shift = (owner.order%2) * 8;
+                tmp = owner.CCMRx;
+                tmp &= ~(0x73U << shift);
+                tmp |= static_cast<uint32_t>(value) << shift;
+                owner.CCMRx = tmp;
+            }
+        };
+        struct _InputFilter : public _Property<uint8_t>
+        {
+            using _Property<uint8_t>::_Property;
+            using _Property<uint8_t>::operator=;
+            uint8_t getter() const override { return (owner.CCMRx >> 4) & 0x0FU; }
+            void setter(const uint8_t value) override {
+                const unsigned shift = (owner.order%2) * 8 + 4;
+                const uint32_t mask = 0x0FU << shift;
+                owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
+            }
+        };
+        struct _InputPrescaler : public _Property<ClockPrescaler>
+        {
+            using _Property<ClockPrescaler>::_Property;
+            using _Property<ClockPrescaler>::operator=;
+            ClockPrescaler getter() const override {
+                return static_cast<ClockPrescaler>((owner.CCMRx >> 2) & 0x03U);
+            }
+            void setter(const ClockPrescaler value) override {
+                const unsigned shift = (owner.order%2) * 8 + 2;
+                const uint32_t mask = 0x03U << shift;
+                owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
+            }
+        };
+        struct _InputTrigger : public _Property<EdgeTrigger>
+        {
+            using _Property<EdgeTrigger>::_Property;
+            using _Property<EdgeTrigger>::operator=;
+            EdgeTrigger getter() const override {
+                return static_cast<EdgeTrigger>((owner._timer.reg.CCER >> (owner.order*4)) & 0xAU);
+            }
+            void setter(const EdgeTrigger value) override {
+                const unsigned shift = owner.order * 4;
+                const uint32_t mask = 0xAU << shift;
+                owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (static_cast<uint32_t>(value) << shift);
+            }
+        };
+        struct _IOSelection : public _Property<IOSelection>
+        {
+            using _Property<IOSelection>::_Property;
+            using _Property<IOSelection>::operator=;
+            IOSelection getter() const override {
+                return static_cast<IOSelection>((owner.CCMRx >> ((owner.order%2)*8)) & 0x03U);
+            }
+            void setter(const IOSelection value) override {
+                const unsigned shift = (owner.order%2) * 8;
+                const uint32_t mask = 0x03U << shift;
+                owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
+            }
+        };
         constexpr volatile uint32_t & _get_ccr(const T& timer, const uint8_t order)
         {
             switch(order)
@@ -347,102 +509,22 @@ public:
             return (order < 2) ? timer.reg.CCMR1 : timer.reg.CCMR2;
         }
     public:
-        const gpio::Pin output_pin;
-        const gpio::Pin input_pin;
         const uint8_t order;
         volatile uint32_t &CapComRegister; // not that Capcom, no games here
         volatile uint32_t &CCMRx;
         CallbackType on_capture = nullptr;
         CallbackType on_compare = nullptr;
-        tricks::Property<bool> enabled{
-            [this]() -> bool { return _timer.reg.CCER & (1U << (order * 4)); },
-            [this](bool value) -> void {
-                if (value) enable(); else disable();
-                }
-        };
-        tricks::Property<bool> inverse_polarity{
-            [this]() -> bool { return _timer.reg.CCER & (0x2U << (order * 4)); },
-            [this](bool value) -> void {
-                const uint32_t mask = 0x2U << (order * 4);
-                _timer.reg.CCER = (_timer.reg.CCER & ~mask) | (value ? mask : 0);
-                }
-        };
-        tricks::Property<bool> output_preload_enabled{
-            [this]() -> bool { return CCMRx & (1U << ((order%2) * 8 + 3)); },
-            [this](bool value) -> void {
-                const uint32_t mask = 1U << ((order%2) * 8 + 3);
-                CCMRx = (CCMRx & ~mask) | (value ? mask : 0);
-                }
-        };
-        tricks::Property<bool> pwm_fast_mode{
-            [this]() -> bool { return CCMRx & (1U << ((order%2) * 8 + 2)); },
-            [this](bool value) -> void {
-                const uint32_t mask = 1U << ((order%2) * 8 + 2);
-                CCMRx = (CCMRx & ~mask) | (value ? mask : 0);
-                }
-        };
-        tricks::Property<OutputCompareMode> output_mode{
-            [this]() -> OutputCompareMode {
-                uint32_t tmp;
-                const bool mod1 = (order % 2);
-                tmp = CCMRx;
-                tmp &= (mod1 ? 0x7300U : 0x73U);
-                tmp >>= (mod1 ? 8U : 0U);
-                return static_cast<OutputCompareMode>(tmp);
-            },
-            [this](OutputCompareMode value) -> void {
-                uint32_t tmp;
-                const uint32_t shift = (order%2) * 8;
-                tmp = CCMRx;
-                tmp &= ~(0x73U << shift);
-                tmp |= static_cast<uint32_t>(value) << shift;
-                CCMRx = tmp;
-            }
-        };
-        tricks::Property<uint8_t> input_filter{
-            [this]() -> uint8_t {
-                return (CCMRx >> 4) & 0x0FU;
-                },
-            [this](uint8_t value) -> void {
-                const unsigned shift = (order%2) * 8 + 4;
-                const uint32_t mask = 0x0FU << shift;
-                value &= 0x0FU;
-                CCMRx = (CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
-                }
-        };
-        tricks::Property<ClockPrescaler> input_prescaler{
-            [this]() -> ClockPrescaler {
-                return static_cast<ClockPrescaler>((CCMRx >> 2) & 0x03U);
-                },
-            [this](ClockPrescaler value) -> void {
-                const unsigned shift = (order%2) * 8 + 2;
-                const uint32_t mask = 0x03U << shift;
-                CCMRx = (CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
-                }
-        };
-        tricks::Property<EdgeTrigger> input_trigger{
-            [this]() -> EdgeTrigger {
-                return static_cast<EdgeTrigger>((_timer.reg.CCER >> (order*4)) & 0xAU);
-            },
-            [this](EdgeTrigger value) -> void {
-                const unsigned shift = order * 4;
-                const uint32_t mask = 0xAU << shift;
-                _timer.reg.CCER = (_timer.reg.CCER & ~mask) | (static_cast<uint32_t>(value) << shift);
-            }
-        };
-        tricks::Property<IOSelection> io_selection{  // only writable when channel is disabled
-            [this]() -> IOSelection {
-                return static_cast<IOSelection>((CCMRx >> ((order%2)*8) ) & 0x03U);
-                },
-            [this](IOSelection value) -> void {
-                const unsigned shift = (order%2) * 8;
-                const uint32_t mask = 0x03U << shift;
-                CCMRx = (CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
-                }
-        };
+        _Enabled enabled = _Enabled(*this);
+        _InversePolarity inverse_polarity = _InversePolarity(*this);
+        _OutputPreloadEnabled output_preload_enabled = _OutputPreloadEnabled(*this);
+        _PWMFastMode pwm_fast_mode = _PWMFastMode(*this);
+        _OutputCompareMode output_mode = _OutputCompareMode(*this);
+        _InputFilter input_filter = _InputFilter(*this);
+        _InputPrescaler input_prescaler = _InputPrescaler(*this);
+        _InputTrigger input_trigger = _InputTrigger(*this);
+        _IOSelection io_selection = _IOSelection(*this);
 
-        Channel(T &timer, const gpio::Pin output, const gpio::Pin input, const uint8_t order)
-            : _timer(timer), output_pin(output), input_pin(input), order(order),
+        Channel(T &timer, const uint8_t order) : _timer(timer), order(order),
                 CapComRegister(_get_ccr(timer, order)), CCMRx(_get_ccmr(timer, order))
         {}
         virtual ~Channel() = default;
@@ -484,18 +566,20 @@ public:
         void irq_handler() const noexcept
         try{
             const uint32_t FLAG_MASK = 2U << order;
-            if (_timer.reg.SR & FLAG_MASK &&  // check if flag is set
-                _timer.reg.DIER & FLAG_MASK)  // check if source is enabled
+            if (_timer.reg.SR & FLAG_MASK)  // check if flag is set
             {
                 _timer.reg.SR = ~FLAG_MASK; // clear pending interrupt
-                const uint32_t CAPTURE_MASK = (order % 2) ? 0x300U : 0x3U;
-                if ((CCMRx & CAPTURE_MASK) && on_capture)
+                if (_timer.reg.DIER & FLAG_MASK)  // check if source is enabled
                 {
-                    on_capture();
-                }
-                else if (on_compare)
-                {
-                    on_compare();
+                    const uint32_t CAPTURE_MASK = (order % 2) ? 0x300U : 0x3U;
+                    if ((CCMRx & CAPTURE_MASK) && on_capture)
+                    {
+                        on_capture();
+                    }
+                    else if (on_compare)
+                    {
+                        on_compare();
+                    }
                 }
             }
         }
@@ -504,9 +588,352 @@ public:
             // do nothing
         }
     };
+
+    /**
+     * @brief Channel with breaking and dead time function
+     * 
+     */
+    class Channel_Break : public Channel
+    {
+    public:
+        enum class LockLevel : uint8_t
+        {
+            Off = 0U,  /*!< Locking disabled   */
+            Level1 = 1U,  /*!< Locking level 1    */
+            Level2 = 2U,  /*!< Locking level 2    */
+            Level3 = 3U   /*!< Locking level 3    */
+        };
+    protected:
+        template <typename T>
+        struct _Property : tricks::StaticProperty<T, Channel_Break &>
+        {
+            using tricks::StaticProperty<T, Channel_Break &>::StaticProperty;
+            using tricks::StaticProperty<T, Channel_Break &>::operator=;
+        };
+        struct _MainOutputEnabled : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.BDTR & 0x8000U; }
+            void setter(const bool value) override {
+                owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x8000U) : (owner._timer.reg.BDTR&~0x8000U);
+            }
+        };
+        struct _AutomaticOutputEnabled : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.BDTR & 0x4000U; }
+            void setter(const bool value) override {
+                owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x4000U) : (owner._timer.reg.BDTR&~0x4000U);
+            }
+        };
+        struct _BreakPolarity : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.BDTR & 0x2000U; }
+            void setter(const bool value) override {
+                owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x2000U) : (owner._timer.reg.BDTR&~0x2000U);
+            }
+        };
+        struct _BreakEnabled : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.BDTR & 0x1000U; }
+            void setter(const bool value) override {
+                owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x1000U) : (owner._timer.reg.BDTR&~0x1000U);
+            }
+        };
+        struct _LockLevel : public _Property<LockLevel>
+        {
+            using _Property<LockLevel>::_Property;
+            using _Property<LockLevel>::operator=;
+            LockLevel getter() const override {
+                return static_cast<LockLevel>((owner._timer.reg.BDTR >> 8) & 0x3U);
+            }
+            void setter(const LockLevel value) override {
+                owner._timer.reg.BDTR = (owner._timer.reg.BDTR & ~0x300U) | (static_cast<uint32_t>(value) << 8);
+            }
+        };
+        struct _IdleState : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.CR2 & (0x100U << (owner.order*2)); }
+            void setter(const bool value) override {
+                const uint32_t mask = 0x100U << (owner.order*2);
+                owner._timer.reg.CR2 = (owner._timer.reg.CR2 & ~mask) | (value ? mask : 0);
+            }
+        };
+        struct _DeadTime : public _Property<uint32_t>
+        {
+            using _Property<uint32_t>::_Property;
+            using _Property<uint32_t>::operator=;
+            uint32_t getter() const override {
+                uint8_t dtg = owner._timer.reg.BDTR & 0xFFU;
+                if (dtg & 0x80U)
+                {
+                    if (dtg & 0x40U)
+                    {
+                        if (dtg & 0x20U)
+                            return (32 + (dtg & 0x1FU)) * 16;
+                        else
+                            return (32 + (dtg & 0x1FU)) * 8;
+                    }
+                    else
+                    {
+                        return (64 + (dtg & 0x3FU)) * 2;
+                    }
+                }
+                else
+                {
+                    return dtg;
+                }
+            }
+            void setter(const uint32_t value) override {
+                if (value > 1008U)
+                    owner._timer.reg.BDTR |= 0xFFU;
+                else if (value > 504)
+                    owner._timer.reg.BDTR |= value / 16 - 32;
+                else if (value > 254)
+                    owner._timer.reg.BDTR |= value / 8 - 32;
+                else if (value > 127)
+                    owner._timer.reg.BDTR |= value / 2 - 64;
+                else
+                    owner._timer.reg.BDTR |= value;
+            }
+        };
+    public:
+        using Channel::Channel;
+
+        _MainOutputEnabled main_output_enabled = _MainOutputEnabled(*this);
+        _AutomaticOutputEnabled automatic_output_enabled = _AutomaticOutputEnabled(*this);
+        _BreakPolarity break_polarity = _BreakPolarity(*this);
+        _BreakEnabled break_enabled = _BreakEnabled(*this);
+        _LockLevel lock_level = _LockLevel(*this);
+        _IdleState idle_state = _IdleState(*this);
+        _DeadTime dead_time = _DeadTime(*this);  // return multiple of clock source period of DT
+
+        void load(const CaptureCompareConfig &config) override
+        {
+            Channel::load(config);
+            idle_state = config.idle_state;
+        }
+    };
+
+    /**
+     * @brief Channel with breaking function and complementary output
+     * 
+     */
+    class Channel_N_Break : public Channel_Break
+    {
+    protected:
+        template <typename T>
+        struct _Property : tricks::StaticProperty<T, Channel_N_Break &>
+        {
+            using tricks::StaticProperty<T, Channel_N_Break &>::StaticProperty;
+            using tricks::StaticProperty<T, Channel_N_Break &>::operator=;
+        };
+        struct _IdleNState : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.CR2 & (0x200U << (owner.order*2)); }
+            void setter(const bool value) override {
+                const uint32_t mask = 0x200U << (owner.order*2);
+                owner._timer.reg.CR2 = (owner._timer.reg.CR2 & ~mask) | (value ? mask : 0);
+            }
+        };
+        struct _InverseNPolarity : public _Property<bool>
+        {
+            using _Property<bool>::_Property;
+            using _Property<bool>::operator=;
+            bool getter() const override { return owner._timer.reg.CCER & (0x8U << (owner.order * 4)); }
+            void setter(const bool value) override {
+                const uint32_t mask = 0x8U << (owner.order * 4);
+                owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (value ? mask : 0);
+            }
+        };
+    public:
+        using Channel_Break::Channel_Break;
+
+        _IdleNState idle_n_state = _IdleNState(*this);
+        _InverseNPolarity inverse_n_polarity = _InverseNPolarity(*this);
+
+        void load(const CaptureCompareConfig &config) override
+        {
+            Channel_Break::load(config);
+            idle_n_state = config.idle_n_state;
+            inverse_n_polarity = config.inverse_n_polarity;
+        }
+    };
 };
 
-inline BasicTimer Timer2(detail::TIM2_Reg, nvic::TIM2_IRQn);
+class GeneralPurposeTimer_2CH : public BaseGeneralPurposeTimer
+{
+public:
+    using BaseGeneralPurposeTimer::BaseGeneralPurposeTimer;
+    Channel channel1 = Channel(*this, 0);
+    Channel channel2 = Channel(*this, 1);
+
+    void global_irq_handler() const noexcept
+    {
+        BaseGeneralPurposeTimer::global_irq_handler();
+        channel1.irq_handler();
+        channel2.irq_handler();
+    }
+};
+
+class GeneralPurposeTimer : public GeneralPurposeTimer_2CH
+{
+public:
+    using GeneralPurposeTimer_2CH::GeneralPurposeTimer_2CH;
+    Channel channel3 = Channel(*this, 2);
+    Channel channel4 = Channel(*this, 3);
+
+    void global_irq_handler() const noexcept
+    {
+        GeneralPurposeTimer_2CH::global_irq_handler();
+        channel3.irq_handler();
+        channel4.irq_handler();
+    }
+};
+
+class AdvancedTimer : public BaseGeneralPurposeTimer
+{
+public:
+    Channel_N_Break channel1 = Channel_N_Break(*this, 0);
+    Channel_N_Break channel2 = Channel_N_Break(*this, 1);
+    Channel_N_Break channel3 = Channel_N_Break(*this, 2);
+    Channel_Break channel4 = Channel_Break(*this, 3);
+    CallbackType on_break = nullptr;
+    CallbackType on_communication = nullptr;
+    const nvic::IRQn_Type break_irqn;
+    const nvic::IRQn_Type trigger_com_irqn;  // trigger/comunication interrupt
+    const nvic::IRQn_Type capcom_irqn;  // capture/compare interrupt
+
+    AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn, nvic::IRQn_Type brk_iqn,
+        nvic::IRQn_Type tr_com_iqn, nvic::IRQn_Type cc_iqn)
+        : AdvancedTimer(reg, r_irqn, brk_iqn, tr_com_iqn, cc_iqn,
+        ClockSourceConfig(), TimeBaseConfig())
+    {}
+
+    AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
+        nvic::IRQn_Type brk_iqn, nvic::IRQn_Type tr_com_iqn, nvic::IRQn_Type cc_iqn,
+        const ClockSourceConfig &clock_config, const TimeBaseConfig &time_base_config,
+        uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
+        : BaseGeneralPurposeTimer(reg, r_irqn, clock_config, time_base_config,
+            max_peroid, max_prescaler, max_repetition),
+            break_irqn(brk_iqn), trigger_com_irqn(tr_com_iqn), capcom_irqn(cc_iqn)
+        {}
+    
+    void enable_break_irq() const noexcept
+    {
+        nvic::enable_irq(break_irqn);
+    }
+
+    void disable_break_irq() const noexcept
+    {
+        nvic::disable_irq(break_irqn);
+    }
+
+    void enable_trigger_com_irq() const noexcept
+    {
+        nvic::enable_irq(trigger_com_irqn);
+    }
+
+    void disable_trigger_com_irq() const noexcept
+    {
+        nvic::disable_irq(trigger_com_irqn);
+    }
+
+    void enable_capcom_irq() const noexcept
+    {
+        nvic::enable_irq(capcom_irqn);
+    }
+
+    void disable_capcom_irq() const noexcept
+    {
+        nvic::disable_irq(capcom_irqn);
+    }
+
+    void cc_irq_handler() const noexcept
+    {
+        channel1.irq_handler();
+        channel2.irq_handler();
+        channel3.irq_handler();
+        channel4.irq_handler();
+    }
+
+    void break_irq_handler() const noexcept
+    try{
+        const uint32_t FLAG_MASK = 0x80U;
+        if (reg.SR & FLAG_MASK)  // check if flag is set
+        {
+            reg.SR = ~FLAG_MASK; // clear pending interrupt
+            if (reg.DIER & FLAG_MASK &&  // check if source is enabled
+                on_break)  // check if callback is set
+            {
+                on_break();
+            }
+        }
+    }
+    catch(...)
+    {
+    }
+
+    void trigger_com_irq_handler() const noexcept
+    try{
+        const uint32_t FLAG_MASK = 0x20U;
+        if (reg.SR & FLAG_MASK)  // check if flag is set
+        {
+            reg.SR = ~FLAG_MASK; // clear pending interrupt
+            if (reg.DIER & FLAG_MASK)  // check if source is enabled
+            {
+                if (on_communication)  // check if callback is set
+                {
+                    on_communication();
+                }
+                if (on_trigger)  // check if callback is set
+                {
+                    on_trigger();
+                }
+            }
+        }
+    }
+    catch(...)
+    {
+    }
+
+    void global_irq_handler() const noexcept
+    {
+        on_reload_handler();
+        cc_irq_handler();
+        break_irq_handler();
+        trigger_com_irq_handler();
+    }
+};
+
+extern AdvancedTimer Timer1;
+extern GeneralPurposeTimer Timer2;
+extern GeneralPurposeTimer Timer3;
+extern GeneralPurposeTimer Timer4;
+extern GeneralPurposeTimer Timer5;
+extern BasicTimer Timer6;
+extern BasicTimer Timer7;
+extern AdvancedTimer Timer8;
+extern GeneralPurposeTimer_2CH Timer9;
+extern GeneralPurposeTimer_2CH Timer10;
+extern GeneralPurposeTimer_2CH Timer11;
+extern GeneralPurposeTimer_2CH Timer12;
+extern GeneralPurposeTimer_2CH Timer13;
+extern GeneralPurposeTimer_2CH Timer14;
+extern GeneralPurposeTimer_2CH Timer15;
+extern GeneralPurposeTimer_2CH Timer16;
+extern GeneralPurposeTimer_2CH Timer17;
+
 
 }
 }

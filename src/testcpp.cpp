@@ -66,7 +66,7 @@ int main()
         {
             render.format_at(0, 0, "Timer2 count {} {}\n", ++count, clock::Timer2.direction());
         };
-        clock::Timer2.enable_reload_irq();
+        clock::Timer2.enable_irq();
         clock::Timer2.start();
     }
     catch (const std::exception &e)

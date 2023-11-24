@@ -207,169 +207,154 @@ _Port & get_port_by_index(const int index)
 
 /*Pin class methods*/
 
-Pin::Pin(_Port & port, const uint8_t pin): _pin(pin), _mask(1 << pin), port(port),
-    io({
-        [this, &port]() -> PinConfig::IO
-        {
-            return static_cast<PinConfig::IO>(
-                (port.MODER >> (_pin * 2)) & GPIO_MODER_MODER0
-            );
-        },
-        [this, &port](const PinConfig::IO value)
-        {
-            uint32_t temp = port.MODER;
-            temp &= ~(GPIO_MODER_MODER0 << (_pin * 2));
-            temp |= (static_cast<uint32_t>(value) << (_pin * 2));
-            port.MODER = temp;
-        }
-    }),
-    out_mode(
-        {
-        [this, &port]() -> PinConfig::OutMode
-        {
-            return static_cast<PinConfig::OutMode>(
-                (port.OTYPER >> _pin) & GPIO_OTYPER_OT_0
-            );
-        },
-        [this, &port](const PinConfig::OutMode value)
-        {
-            uint32_t temp = port.OTYPER;
-            temp &= ~(GPIO_OTYPER_OT_0 << _pin);
-            temp |= (static_cast<uint32_t>(value) << _pin);
-            port.OTYPER = temp;
-        }
-    }),
-    exti_mode({
-        [this]() -> PinConfig::EXTIMode
-        {
-            return static_cast<PinConfig::EXTIMode>(
-                bool(EXTI_IMR & _mask) | (bool(EXTI_EMR & _mask) << 1)
-            );
-        },
-        [this](const PinConfig::EXTIMode value)
-        {
-            uint32_t temp;
-            switch (value)
-            {
-                case PinConfig::NoEXTI:
-                    temp = EXTI_IMR;
-                    temp &= ~_mask;
-                    EXTI_IMR = temp;
-                    temp = EXTI_EMR;
-                    temp &= ~_mask;
-                    EXTI_EMR = temp;
-                    break;
-                case PinConfig::Interrupt:
-                    temp = EXTI_IMR;
-                    temp |= _mask;
-                    EXTI_IMR = temp;
-                    temp = EXTI_EMR;
-                    temp &= ~_mask;
-                    EXTI_EMR = temp;
-                    break;
-                case PinConfig::Event:
-                    temp = EXTI_IMR;
-                    temp &= ~_mask;
-                    EXTI_IMR = temp;
-                    temp = EXTI_EMR;
-                    temp |= _mask;
-                    EXTI_EMR = temp;
-                    break;
-            }
-        }
-    }),
-    trigger({
-        [this]() -> PinConfig::Trigger
-        {
-            return static_cast<PinConfig::Trigger>(
-                bool(EXTI_RTSR & _mask) | (bool(EXTI_FTSR & _mask) << 1)
-            );
-        },
-        [this](const PinConfig::Trigger value)
-        {
-            uint32_t temp;
-            switch (value)
-            {
-                case PinConfig::NoTrigger:
-                    temp = EXTI_RTSR;
-                    temp &= ~_mask;
-                    EXTI_RTSR = temp;
-                    temp = EXTI_FTSR;
-                    temp &= ~_mask;
-                    EXTI_FTSR = temp;
-                    break;
-                case PinConfig::Rising:
-                    temp = EXTI_RTSR;
-                    temp |= _mask;
-                    EXTI_RTSR = temp;
-                    temp = EXTI_FTSR;
-                    temp &= ~_mask;
-                    EXTI_FTSR = temp;
-                    break;
-                case PinConfig::Falling:
-                    temp = EXTI_RTSR;
-                    temp &= ~_mask;
-                    EXTI_RTSR = temp;
-                    temp = EXTI_FTSR;
-                    temp |= _mask;
-                    EXTI_FTSR = temp;
-                    break;
-                case PinConfig::RisingFalling:
-                    temp = EXTI_RTSR;
-                    temp |= _mask;
-                    EXTI_RTSR = temp;
-                    temp = EXTI_FTSR;
-                    temp |= _mask;
-                    EXTI_FTSR = temp;
-                    break;
-            }
-        }
-    }),
-    pull({
-        [this, &port]() -> PinConfig::Pull
-        {
-            return static_cast<PinConfig::Pull>(
-                (port.PUPDR >> (_pin * 2)) & GPIO_PUPDR_PUPDR0
-            );
-        },
-        [this, &port](const PinConfig::Pull value)
-        {
-            uint32_t temp = port.PUPDR;
-            temp &= ~(GPIO_PUPDR_PUPDR0 << (_pin * 2));
-            temp |= (static_cast<uint32_t>(value) << (_pin * 2));
-            port.PUPDR = temp;
-        }
-    }),
-    speed({
-        [this, &port]() -> PinConfig::Speed
-        {
-            return static_cast<PinConfig::Speed>(
-                (port.OSPEEDR >> (_pin * 2)) & GPIO_OSPEEDER_OSPEEDR0
-            );
-        },
-        [this, &port](const PinConfig::Speed value)
-        {
-            uint32_t temp = port.OSPEEDR;
-            temp &= ~(GPIO_OSPEEDER_OSPEEDR0 << (_pin * 2));
-            temp |= (static_cast<uint32_t>(value) << (_pin * 2));
-            port.OSPEEDR = temp;
-        }
-    }),
-    alternate({
-        [this, &port]() -> uint8_t
-        {
-            return static_cast<uint8_t>(
-                (port.AFR[_pin >> 3] >> ((_pin & 0x7) << 2)) & 0xFU
-            );
-        },
-        [this, &port](const uint8_t value)
-        {
-            uint32_t temp = port.AFR[_pin >> 3];
-            temp &= ~(static_cast<uint32_t>(0xFU) << ((_pin & 0x7) << 2));
-            temp |= (static_cast<uint32_t>(value) << ((_pin & 0x7) << 2));
-            port.AFR[_pin >> 3] = temp;
-        }
-    })
+PinConfig::IO Pin::_IO::getter() const
+{
+    return static_cast<PinConfig::IO>(
+        (owner.port.MODER >> (owner._pin * 2)) & GPIO_MODER_MODER0);
+}
+void Pin::_IO::setter(const PinConfig::IO value)
+{
+    uint32_t temp = owner.port.MODER;
+    temp &= ~(GPIO_MODER_MODER0 << (owner._pin * 2));
+    temp |= (static_cast<uint32_t>(value) << (owner._pin * 2));
+    owner.port.MODER = temp;
+}
+
+PinConfig::OutMode Pin::_OutMode::getter() const
+{
+    return static_cast<PinConfig::OutMode>(
+        (owner.port.OTYPER >> owner._pin) & GPIO_OTYPER_OT_0);
+}
+void Pin::_OutMode::setter(const PinConfig::OutMode value)
+{
+    uint32_t temp = owner.port.OTYPER;
+    temp &= ~(GPIO_OTYPER_OT_0 << owner._pin);
+    temp |= (static_cast<uint32_t>(value) << owner._pin);
+    owner.port.OTYPER = temp;
+}
+
+PinConfig::EXTIMode Pin::_EXTIMode::getter() const
+{
+    return static_cast<PinConfig::EXTIMode>(
+        bool(EXTI_IMR & owner._mask) | (bool(EXTI_EMR & owner._mask) << 1));
+}
+void Pin::_EXTIMode::setter(const PinConfig::EXTIMode value)
+{
+    uint32_t temp;
+    switch (value)
+    {
+        case PinConfig::NoEXTI:
+            temp = EXTI_IMR;
+            temp &= ~owner._mask;
+            EXTI_IMR = temp;
+            temp = EXTI_EMR;
+            temp &= ~owner._mask;
+            EXTI_EMR = temp;
+            break;
+        case PinConfig::Interrupt:
+            temp = EXTI_IMR;
+            temp |= owner._mask;
+            EXTI_IMR = temp;
+            temp = EXTI_EMR;
+            temp &= ~owner._mask;
+            EXTI_EMR = temp;
+            break;
+        case PinConfig::Event:
+            temp = EXTI_IMR;
+            temp &= ~owner._mask;
+            EXTI_IMR = temp;
+            temp = EXTI_EMR;
+            temp |= owner._mask;
+            EXTI_EMR = temp;
+            break;
+    }
+}
+
+PinConfig::Trigger Pin::_Trigger::getter() const
+{
+    return static_cast<PinConfig::Trigger>(
+        bool(EXTI_RTSR & owner._mask) | (bool(EXTI_FTSR & owner._mask) << 1));
+}
+void Pin::_Trigger::setter(const PinConfig::Trigger value)
+{
+    uint32_t temp;
+    switch (value)
+    {
+        case PinConfig::NoTrigger:
+            temp = EXTI_RTSR;
+            temp &= ~owner._mask;
+            EXTI_RTSR = temp;
+            temp = EXTI_FTSR;
+            temp &= ~owner._mask;
+            EXTI_FTSR = temp;
+            break;
+        case PinConfig::Rising:
+            temp = EXTI_RTSR;
+            temp |= owner._mask;
+            EXTI_RTSR = temp;
+            temp = EXTI_FTSR;
+            temp &= ~owner._mask;
+            EXTI_FTSR = temp;
+            break;
+        case PinConfig::Falling:
+            temp = EXTI_RTSR;
+            temp &= ~owner._mask;
+            EXTI_RTSR = temp;
+            temp = EXTI_FTSR;
+            temp |= owner._mask;
+            EXTI_FTSR = temp;
+            break;
+        case PinConfig::RisingFalling:
+            temp = EXTI_RTSR;
+            temp |= owner._mask;
+            EXTI_RTSR = temp;
+            temp = EXTI_FTSR;
+            temp |= owner._mask;
+            EXTI_FTSR = temp;
+            break;
+    }
+}
+
+PinConfig::Pull Pin::_Pull::getter() const
+{
+    return static_cast<PinConfig::Pull>(
+        (owner.port.PUPDR >> (owner._pin * 2)) & GPIO_PUPDR_PUPDR0);
+}
+void Pin::_Pull::setter(const PinConfig::Pull value)
+{
+    uint32_t temp = owner.port.PUPDR;
+    temp &= ~(GPIO_PUPDR_PUPDR0 << (owner._pin * 2));
+    temp |= (static_cast<uint32_t>(value) << (owner._pin * 2));
+    owner.port.PUPDR = temp;
+}
+
+PinConfig::Speed Pin::_Speed::getter() const
+{
+    return static_cast<PinConfig::Speed>(
+        (owner.port.OSPEEDR >> (owner._pin * 2)) & GPIO_OSPEEDER_OSPEEDR0);
+}
+void Pin::_Speed::setter(const PinConfig::Speed value)
+{
+    uint32_t temp = owner.port.OSPEEDR;
+    temp &= ~(GPIO_OSPEEDER_OSPEEDR0 << (owner._pin * 2));
+    temp |= (static_cast<uint32_t>(value) << (owner._pin * 2));
+    owner.port.OSPEEDR = temp;
+}
+
+uint8_t Pin::_Alternate::getter() const
+{
+    return static_cast<uint8_t>(
+        (owner.port.AFR[owner._pin >> 3] >> ((owner._pin & 0x7) << 2)) & 0xFU);
+}
+void Pin::_Alternate::setter(const uint8_t value)
+{
+    uint32_t temp = owner.port.AFR[owner._pin >> 3];
+    temp &= ~(static_cast<uint32_t>(0xFU) << ((owner._pin & 0x7) << 2));
+    temp |= (static_cast<uint32_t>(value) << ((owner._pin & 0x7) << 2));
+    owner.port.AFR[owner._pin >> 3] = temp;
+}
+
+Pin::Pin(_Port & port, const uint8_t pin): _pin(pin), _mask(1 << pin), port(port)
 {
     port.enable_clock();
 }

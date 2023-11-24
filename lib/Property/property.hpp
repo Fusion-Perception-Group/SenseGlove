@@ -3,25 +3,58 @@
 #include <functional>
 #include <stdexcept>
 
-/**
- * @brief A template class for creating properties with getter and setter functions.
- *
- * This class provides a way to create properties with getter and setter functions. It can be used to
- * create properties for any type, including references. The class overloads the assignment operator
- * and the cast operator to allow for easy assignment and retrieval of property values.
- *
- * @tparam T The type of the property.
- */
-template <typename T>
-class Property
-{
-    // ...
-};
-
 namespace vermils
 {
 namespace tricks
 {
+
+template <typename T, typename O>
+struct StaticProperty
+{
+protected:
+    O &&owner;
+public:
+    StaticProperty(O &&owner) : owner(owner) {}
+    virtual T getter() const = 0;
+    virtual void setter(const T value) {};
+    operator T() const
+    {
+        return getter();
+    }
+    T operator=(const T value)
+    {
+        setter(value);
+        return value;
+    }
+    T operator ()() const
+    {
+        return static_cast<T>(*this);
+    }
+};
+
+template <typename T, typename O>
+struct StaticProperty<T &, O>
+{
+protected:
+    O &&owner;
+public:
+    StaticProperty(O &&owner) : owner(owner) {}
+    virtual T& getter() const = 0;
+    virtual void setter(const T &value) {};
+    operator T&() const
+    {
+        return getter();
+    }
+    T &operator=(const T &value)
+    {
+        setter(value);
+        return value;
+    }
+    T &operator ()() const
+    {
+        return static_cast<T>(*this);
+    }
+};
 
 /**
  * @brief Property Class

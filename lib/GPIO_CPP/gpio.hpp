@@ -210,49 +210,117 @@ class Pin
     #if __VERMIL_STM32_USE_GENERIC
     mutable PinConfig _config;
     #endif
+    template <typename T>
+    struct _Property : tricks::StaticProperty<T, Pin &>
+    {
+        using tricks::StaticProperty<T, Pin &>::StaticProperty;
+        using tricks::StaticProperty<T, Pin &>::operator =;
+    };
+    struct _Pin : _Property<uint8_t>
+    {
+        using _Property<uint8_t>::_Property;
+        using _Property<uint8_t>::operator =;
+        uint8_t getter() const override { return owner._pin; }
+        void setter(const uint8_t value) override
+        {
+            owner._pin = value;
+            owner._mask = 1 << value;
+        }
+    };
+    struct _Mask : _Property<uint32_t>
+    {
+        using _Property<uint32_t>::_Property;
+        using _Property<uint32_t>::operator =;
+        uint32_t getter() const override { return owner._mask; }
+    };
+    struct _OnInterrupt : _Property<CallbackType>
+    {
+        using _Property<CallbackType>::_Property;
+        using _Property<CallbackType>::operator =;
+        CallbackType getter() const override
+        {
+            if (owner._pin >= GPIO_PINS_N)
+            {
+                return nullptr;
+            }
+            return hidden::interrupt_callbacks[owner._pin];
+        }
+        void setter(const CallbackType value) override
+        {
+            if (owner._pin >= GPIO_PINS_N)
+            {
+                return;
+            }
+            hidden::interrupt_callbacks[owner._pin] = value;
+        }
+    };
+    struct _IO : _Property<PinConfig::IO>
+    {
+        using _Property<PinConfig::IO>::_Property;
+        using _Property<PinConfig::IO>::operator =;
+        PinConfig::IO getter() const override;
+        void setter(const PinConfig::IO value) override;
+    };
+    struct _OutMode : _Property<PinConfig::OutMode>
+    {
+        using _Property<PinConfig::OutMode>::_Property;
+        using _Property<PinConfig::OutMode>::operator =;
+        PinConfig::OutMode getter() const override;
+        void setter(const PinConfig::OutMode value) override;
+    };
+    struct _EXTIMode : _Property<PinConfig::EXTIMode>
+    {
+        using _Property<PinConfig::EXTIMode>::_Property;
+        using _Property<PinConfig::EXTIMode>::operator =;
+        PinConfig::EXTIMode getter() const override;
+        void setter(const PinConfig::EXTIMode value) override;
+    };
+    struct _Trigger : _Property<PinConfig::Trigger>
+    {
+        using _Property<PinConfig::Trigger>::_Property;
+        using _Property<PinConfig::Trigger>::operator =;
+        PinConfig::Trigger getter() const override;
+        void setter(const PinConfig::Trigger value) override;
+    };
+    struct _Pull : _Property<PinConfig::Pull>
+    {
+        using _Property<PinConfig::Pull>::_Property;
+        using _Property<PinConfig::Pull>::operator =;
+        PinConfig::Pull getter() const override;
+        void setter(const PinConfig::Pull value) override;
+    };
+    struct _Speed : _Property<PinConfig::Speed>
+    {
+        using _Property<PinConfig::Speed>::_Property;
+        using _Property<PinConfig::Speed>::operator =;
+        PinConfig::Speed getter() const override;
+        void setter(const PinConfig::Speed value) override;
+    };
+    struct _Alternate : _Property<uint8_t>
+    {
+        using _Property<uint8_t>::_Property;
+        using _Property<uint8_t>::operator =;
+        uint8_t getter() const override;
+        void setter(const uint8_t value) override;
+    };
 public:
     hidden::_Port & port;
     // Pin number
-    tricks::Property<uint8_t> pin = {
-        [this]() { return _pin; },
-        [this](const auto value)
-        {
-            _pin = value;
-            _mask = 1 << value;
-        }
-    };
+    _Pin pin{ *this };
     // Pin mask
-    const tricks::Property<uint32_t> mask = {
-        [this]() -> uint32_t { return _mask; }
-    };
-
-    tricks::Property<CallbackType> on_interrupt{
-        [this]() -> CallbackType {
-                if (_pin >= GPIO_PINS_N)
-                {
-                    return nullptr;
-                }
-                return hidden::interrupt_callbacks[_pin];
-            },
-        [this](const CallbackType value) {
-                if (_pin >= GPIO_PINS_N)
-                {
-                    return;
-                }
-                hidden::interrupt_callbacks[_pin] = value;
-            }
-    };
+    const _Mask mask{ *this };
+    _OnInterrupt on_interrupt{ *this };
 
     Pin(hidden::_Port & port, const uint8_t pin);
     Pin(hidden::_Port & port, const uint8_t pin, const PinConfig & config);
 
-    mutable tricks::Property<PinConfig::IO> io;
-    mutable tricks::Property<PinConfig::OutMode> out_mode;
-    mutable tricks::Property<PinConfig::EXTIMode> exti_mode;
-    mutable tricks::Property<PinConfig::Trigger> trigger;
-    mutable tricks::Property<PinConfig::Pull> pull;
-    mutable tricks::Property<PinConfig::Speed> speed;
-    mutable tricks::Property<uint8_t> alternate;
+    mutable _IO io{ *this };
+    mutable _OutMode out_mode{ *this };
+    mutable _EXTIMode exti_mode{ *this };
+    mutable _Trigger trigger{ *this };
+    mutable _Pull pull{ *this };
+    mutable _Speed speed{ *this };
+    mutable _Alternate alternate{ *this };
 
     /**
      * @brief Loads the configuration and enable clock
