@@ -216,7 +216,7 @@ protected:
         using _Property<bool>::_Property;
         using _Property<bool>::operator=;
         bool getter() const override { return owner.reg.CR1 & 0x80U; }
-        void setter(const bool value) override {
+        void setter(const bool value) const override {
             owner.reg.CR1 = value ? (owner.reg.CR1|0x80U) : (owner.reg.CR1&~0x80U);
         }
     };
@@ -225,7 +225,7 @@ protected:
         using _Property<bool>::_Property;
         using _Property<bool>::operator=;
         bool getter() const override { return owner.reg.CR1 & 0x01U; }
-        void setter(const bool value) override {
+        void setter(const bool value) const override {
             if (value) owner.start(); else owner.stop();
         }
     };
@@ -234,7 +234,7 @@ protected:
         using _Property<bool>::_Property;
         using _Property<bool>::operator=;
         bool getter() const override { return owner.reg.CR1 & 0x10U; }
-        void setter(const bool value) override {
+        void setter(const bool value) const override {
             owner.reg.CR1 = value ? (owner.reg.CR1|0x10U) : (owner.reg.CR1&~0x10U);
         }
     };
@@ -247,36 +247,32 @@ public:
     const uint32_t MAX_PERIOD;
     const uint32_t MAX_PRESCALER;
     const uint32_t MAX_REP_COUNTER;
-    _AutoReloadPreload auto_reload_preload = _AutoReloadPreload(*this);
-    _Enabled enabled = _Enabled(*this);
-    _Direction direction = _Direction(*this);
-    CallbackType on_reload = nullptr;  /* on overflow and underflow */
-    CallbackType on_trigger = nullptr;  /* on trigger event from ITRx, TI1...etc */
-    
-    BasicTimer(detail::Register &reg, nvic::IRQn_Type r_irqn)
-        : BasicTimer(reg, r_irqn, ClockSourceConfig(), TimeBaseConfig())
-    {}
-    BasicTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
-        const ClockSourceConfig &clock_config, const TimeBaseConfig &time_base_config,
+    _AutoReloadPreload auto_reload_preload{*this};
+    _Enabled enabled{*this};
+    _Direction direction{*this};
+    mutable CallbackType on_reload{};  /* on overflow and underflow */
+    mutable CallbackType on_trigger{};  /* on trigger event from ITRx, TI1...etc */
+
+    constexpr BasicTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
         : reg(reg), counter(reg.CNT), auto_reload(reg.ARR), prescaler(reg.PSC), reload_irqn(r_irqn),
           MAX_PERIOD(max_peroid), MAX_PRESCALER(max_prescaler), MAX_REP_COUNTER(max_repetition)
-    {
-        set_time_base(time_base_config);
-        set_clock_source(clock_config);
-    }
+    {}
     BasicTimer & operator=(const BasicTimer &) = delete;
     virtual ~BasicTimer() = default;
 
-    void set_time_base(const TimeBaseConfig &config) noexcept;
-    void set_clock_source(const ClockSourceConfig &config) noexcept;
-    void set_master(const MasterConfig &config) noexcept;
+    void set_time_base(const TimeBaseConfig &config) const noexcept;
+    void set_clock_source(const ClockSourceConfig &config) const noexcept;
+    void set_master(const MasterConfig &config) const noexcept;
 
-    void start() noexcept
+    void init() const noexcept;
+    void deinit() const noexcept;
+
+    void start() const noexcept
     {
         reg.CR1 |= 0x01U;
     }
-    void stop() noexcept
+    void stop() const noexcept
     {
         reg.CR1 &= ~0x01U;
     }
@@ -287,7 +283,7 @@ public:
      * @param value 
      * @throw std::invalid_argument if value exceeds maximum period
      */
-    void set_counter(uint32_t value)
+    void set_counter(uint32_t value) const
     {
         if (value > MAX_PERIOD)
             throw std::invalid_argument("value exceeds maximum period");
@@ -300,14 +296,14 @@ public:
      * @param value 
      * @throw std::invalid_argument if value exceeds maximum period
      */
-    void set_auto_reload(uint32_t value)
+    void set_auto_reload(uint32_t value) const
     {
         if (value > MAX_PERIOD)
             throw std::invalid_argument("value exceeds maximum period");
         auto_reload = value;
     }
 
-    void set_prescaler(uint16_t value) noexcept
+    void set_prescaler(uint16_t value) const noexcept
     {
         prescaler = value;
     }
@@ -388,7 +384,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.CCER & (1U << (owner.order * 4)); }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 if (value) owner.enable(); else owner.disable();
             }
         };
@@ -397,7 +393,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.CCER & (0x2U << (owner.order * 4)); }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 const uint32_t mask = 0x2U << (owner.order * 4);
                 owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (value ? mask : 0);
             }
@@ -407,7 +403,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner.CCMRx & (1U << ((owner.order%2) * 8 + 3)); }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 const uint32_t mask = 1U << ((owner.order%2) * 8 + 3);
                 owner.CCMRx = (owner.CCMRx & ~mask) | (value ? mask : 0);
             }
@@ -417,7 +413,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner.CCMRx & (1U << ((owner.order%2) * 8 + 2)); }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 const uint32_t mask = 1U << ((owner.order%2) * 8 + 2);
                 owner.CCMRx = (owner.CCMRx & ~mask) | (value ? mask : 0);
             }
@@ -434,7 +430,7 @@ public:
                 tmp >>= (mod1 ? 8U : 0U);
                 return static_cast<OutputCompareMode>(tmp);
             }
-            void setter(const OutputCompareMode value) override {
+            void setter(const OutputCompareMode value) const override {
                 uint32_t tmp;
                 const uint32_t shift = (owner.order%2) * 8;
                 tmp = owner.CCMRx;
@@ -448,7 +444,7 @@ public:
             using _Property<uint8_t>::_Property;
             using _Property<uint8_t>::operator=;
             uint8_t getter() const override { return (owner.CCMRx >> 4) & 0x0FU; }
-            void setter(const uint8_t value) override {
+            void setter(const uint8_t value) const override {
                 const unsigned shift = (owner.order%2) * 8 + 4;
                 const uint32_t mask = 0x0FU << shift;
                 owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
@@ -461,7 +457,7 @@ public:
             ClockPrescaler getter() const override {
                 return static_cast<ClockPrescaler>((owner.CCMRx >> 2) & 0x03U);
             }
-            void setter(const ClockPrescaler value) override {
+            void setter(const ClockPrescaler value) const override {
                 const unsigned shift = (owner.order%2) * 8 + 2;
                 const uint32_t mask = 0x03U << shift;
                 owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
@@ -474,7 +470,7 @@ public:
             EdgeTrigger getter() const override {
                 return static_cast<EdgeTrigger>((owner._timer.reg.CCER >> (owner.order*4)) & 0xAU);
             }
-            void setter(const EdgeTrigger value) override {
+            void setter(const EdgeTrigger value) const override {
                 const unsigned shift = owner.order * 4;
                 const uint32_t mask = 0xAU << shift;
                 owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (static_cast<uint32_t>(value) << shift);
@@ -487,7 +483,7 @@ public:
             IOSelection getter() const override {
                 return static_cast<IOSelection>((owner.CCMRx >> ((owner.order%2)*8)) & 0x03U);
             }
-            void setter(const IOSelection value) override {
+            void setter(const IOSelection value) const override {
                 const unsigned shift = (owner.order%2) * 8;
                 const uint32_t mask = 0x03U << shift;
                 owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
@@ -512,19 +508,19 @@ public:
         const uint8_t order;
         volatile uint32_t &CapComRegister; // not that Capcom, no games here
         volatile uint32_t &CCMRx;
-        CallbackType on_capture = nullptr;
-        CallbackType on_compare = nullptr;
-        _Enabled enabled = _Enabled(*this);
-        _InversePolarity inverse_polarity = _InversePolarity(*this);
-        _OutputPreloadEnabled output_preload_enabled = _OutputPreloadEnabled(*this);
-        _PWMFastMode pwm_fast_mode = _PWMFastMode(*this);
-        _OutputCompareMode output_mode = _OutputCompareMode(*this);
-        _InputFilter input_filter = _InputFilter(*this);
-        _InputPrescaler input_prescaler = _InputPrescaler(*this);
-        _InputTrigger input_trigger = _InputTrigger(*this);
-        _IOSelection io_selection = _IOSelection(*this);
+        mutable CallbackType on_capture{};
+        mutable CallbackType on_compare{};
+        _Enabled enabled{*this};
+        _InversePolarity inverse_polarity{*this};
+        _OutputPreloadEnabled output_preload_enabled{*this};
+        _PWMFastMode pwm_fast_mode{*this};
+        _OutputCompareMode output_mode{*this};
+        _InputFilter input_filter{*this};
+        _InputPrescaler input_prescaler{*this};
+        _InputTrigger input_trigger{*this};
+        _IOSelection io_selection{*this};
 
-        Channel(T &timer, const uint8_t order) : _timer(timer), order(order),
+        constexpr Channel(T &timer, const uint8_t order) : _timer(timer), order(order),
                 CapComRegister(_get_ccr(timer, order)), CCMRx(_get_ccmr(timer, order))
         {}
         virtual ~Channel() = default;
@@ -615,7 +611,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.BDTR & 0x8000U; }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x8000U) : (owner._timer.reg.BDTR&~0x8000U);
             }
         };
@@ -624,7 +620,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.BDTR & 0x4000U; }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x4000U) : (owner._timer.reg.BDTR&~0x4000U);
             }
         };
@@ -633,7 +629,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.BDTR & 0x2000U; }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x2000U) : (owner._timer.reg.BDTR&~0x2000U);
             }
         };
@@ -642,7 +638,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.BDTR & 0x1000U; }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x1000U) : (owner._timer.reg.BDTR&~0x1000U);
             }
         };
@@ -653,7 +649,7 @@ public:
             LockLevel getter() const override {
                 return static_cast<LockLevel>((owner._timer.reg.BDTR >> 8) & 0x3U);
             }
-            void setter(const LockLevel value) override {
+            void setter(const LockLevel value) const override {
                 owner._timer.reg.BDTR = (owner._timer.reg.BDTR & ~0x300U) | (static_cast<uint32_t>(value) << 8);
             }
         };
@@ -662,7 +658,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.CR2 & (0x100U << (owner.order*2)); }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 const uint32_t mask = 0x100U << (owner.order*2);
                 owner._timer.reg.CR2 = (owner._timer.reg.CR2 & ~mask) | (value ? mask : 0);
             }
@@ -692,29 +688,29 @@ public:
                     return dtg;
                 }
             }
-            void setter(const uint32_t value) override {
+            void setter(const uint32_t value) const override {
                 if (value > 1008U)
                     owner._timer.reg.BDTR |= 0xFFU;
                 else if (value > 504)
-                    owner._timer.reg.BDTR |= value / 16 - 32;
+                    owner._timer.reg.BDTR |= 0xE0U | (value / 16 - 32);
                 else if (value > 254)
-                    owner._timer.reg.BDTR |= value / 8 - 32;
+                    owner._timer.reg.BDTR |= 0xC0U | (value / 8 - 32);
                 else if (value > 127)
-                    owner._timer.reg.BDTR |= value / 2 - 64;
+                    owner._timer.reg.BDTR |= 0x80U | (value / 2 - 64);
                 else
                     owner._timer.reg.BDTR |= value;
             }
         };
     public:
-        using Channel::Channel;
+        constexpr Channel_Break(T &timer, const uint8_t order) : Channel(timer, order) {}
 
-        _MainOutputEnabled main_output_enabled = _MainOutputEnabled(*this);
-        _AutomaticOutputEnabled automatic_output_enabled = _AutomaticOutputEnabled(*this);
-        _BreakPolarity break_polarity = _BreakPolarity(*this);
-        _BreakEnabled break_enabled = _BreakEnabled(*this);
-        _LockLevel lock_level = _LockLevel(*this);
-        _IdleState idle_state = _IdleState(*this);
-        _DeadTime dead_time = _DeadTime(*this);  // return multiple of clock source period of DT
+        _MainOutputEnabled main_output_enabled{*this};
+        _AutomaticOutputEnabled automatic_output_enabled{*this};
+        _BreakPolarity break_polarity{*this};
+        _BreakEnabled break_enabled{*this};
+        _LockLevel lock_level{*this};
+        _IdleState idle_state{*this};
+        _DeadTime dead_time{*this};  // return multiple of clock source period of DT
 
         void load(const CaptureCompareConfig &config) override
         {
@@ -741,7 +737,7 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.CR2 & (0x200U << (owner.order*2)); }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 const uint32_t mask = 0x200U << (owner.order*2);
                 owner._timer.reg.CR2 = (owner._timer.reg.CR2 & ~mask) | (value ? mask : 0);
             }
@@ -751,16 +747,16 @@ public:
             using _Property<bool>::_Property;
             using _Property<bool>::operator=;
             bool getter() const override { return owner._timer.reg.CCER & (0x8U << (owner.order * 4)); }
-            void setter(const bool value) override {
+            void setter(const bool value) const override {
                 const uint32_t mask = 0x8U << (owner.order * 4);
                 owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (value ? mask : 0);
             }
         };
     public:
-        using Channel_Break::Channel_Break;
+        constexpr Channel_N_Break(T &timer, const uint8_t order) : Channel_Break(timer, order) {}
 
-        _IdleNState idle_n_state = _IdleNState(*this);
-        _InverseNPolarity inverse_n_polarity = _InverseNPolarity(*this);
+        _IdleNState idle_n_state{*this};
+        _InverseNPolarity inverse_n_polarity{*this};
 
         void load(const CaptureCompareConfig &config) override
         {
@@ -808,24 +804,16 @@ public:
     Channel_N_Break channel2 = Channel_N_Break(*this, 1);
     Channel_N_Break channel3 = Channel_N_Break(*this, 2);
     Channel_Break channel4 = Channel_Break(*this, 3);
-    CallbackType on_break = nullptr;
-    CallbackType on_communication = nullptr;
+    mutable CallbackType on_break{};
+    mutable CallbackType on_communication{};
     const nvic::IRQn_Type break_irqn;
     const nvic::IRQn_Type trigger_com_irqn;  // trigger/comunication interrupt
     const nvic::IRQn_Type capcom_irqn;  // capture/compare interrupt
 
-    AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn, nvic::IRQn_Type brk_iqn,
-        nvic::IRQn_Type tr_com_iqn, nvic::IRQn_Type cc_iqn)
-        : AdvancedTimer(reg, r_irqn, brk_iqn, tr_com_iqn, cc_iqn,
-        ClockSourceConfig(), TimeBaseConfig())
-    {}
-
     AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
         nvic::IRQn_Type brk_iqn, nvic::IRQn_Type tr_com_iqn, nvic::IRQn_Type cc_iqn,
-        const ClockSourceConfig &clock_config, const TimeBaseConfig &time_base_config,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
-        : BaseGeneralPurposeTimer(reg, r_irqn, clock_config, time_base_config,
-            max_peroid, max_prescaler, max_repetition),
+        : BaseGeneralPurposeTimer(reg, r_irqn, max_peroid, max_prescaler, max_repetition),
             break_irqn(brk_iqn), trigger_com_irqn(tr_com_iqn), capcom_irqn(cc_iqn)
         {}
     
@@ -916,24 +904,32 @@ public:
     }
 };
 
-extern AdvancedTimer Timer1;
-extern GeneralPurposeTimer Timer2;
-extern GeneralPurposeTimer Timer3;
-extern GeneralPurposeTimer Timer4;
-extern GeneralPurposeTimer Timer5;
-extern BasicTimer Timer6;
-extern BasicTimer Timer7;
-extern AdvancedTimer Timer8;
-extern GeneralPurposeTimer_2CH Timer9;
-extern GeneralPurposeTimer_2CH Timer10;
-extern GeneralPurposeTimer_2CH Timer11;
-extern GeneralPurposeTimer_2CH Timer12;
-extern GeneralPurposeTimer_2CH Timer13;
-extern GeneralPurposeTimer_2CH Timer14;
-extern GeneralPurposeTimer_2CH Timer15;
-extern GeneralPurposeTimer_2CH Timer16;
-extern GeneralPurposeTimer_2CH Timer17;
+extern const AdvancedTimer Timer1;
+extern const GeneralPurposeTimer Timer2;
+extern const GeneralPurposeTimer Timer3;
+extern const GeneralPurposeTimer Timer4;
+extern const GeneralPurposeTimer Timer5;
+extern const BasicTimer Timer6;
+extern const BasicTimer Timer7;
+extern const AdvancedTimer Timer8;
+extern const GeneralPurposeTimer_2CH Timer9;
+extern const GeneralPurposeTimer_2CH Timer10;
+extern const GeneralPurposeTimer_2CH Timer11;
+extern const GeneralPurposeTimer_2CH Timer12;
+extern const GeneralPurposeTimer_2CH Timer13;
+extern const GeneralPurposeTimer_2CH Timer14;
+extern const GeneralPurposeTimer_2CH Timer15;
+extern const GeneralPurposeTimer_2CH Timer16;
+extern const GeneralPurposeTimer_2CH Timer17;
 
+// void test()
+// {
+//     std::size_t s = sizeof(BasicTimer);
+//     std::size_t s = sizeof(BaseGeneralPurposeTimer);
+//     std::size_t s = sizeof(GeneralPurposeTimer_2CH);
+//     std::size_t s = sizeof(GeneralPurposeTimer);
+//     std::size_t s = sizeof(AdvancedTimer);
+// }
 
 }
 }

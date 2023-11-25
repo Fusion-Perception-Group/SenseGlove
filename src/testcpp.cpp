@@ -57,9 +57,10 @@ int main()
         render.format_at(0, 0, "Button pressed\n{} times!\n", ++count);
     };
 
-    //button.enable_irq();
+    button.enable_irq();
     try
     {
+        clock::Timer2.init();
         clock::Timer2.set_auto_reload(10000 - 1);
         clock::Timer2.set_prescaler(clock::SystemCoreClock / 10000 - 1);
         clock::Timer2.on_reload = [&render, &count]()

@@ -212,7 +212,7 @@ PinConfig::IO Pin::_IO::getter() const
     return static_cast<PinConfig::IO>(
         (owner.port.MODER >> (owner._pin * 2)) & GPIO_MODER_MODER0);
 }
-void Pin::_IO::setter(const PinConfig::IO value)
+void Pin::_IO::setter(const PinConfig::IO value) const
 {
     uint32_t temp = owner.port.MODER;
     temp &= ~(GPIO_MODER_MODER0 << (owner._pin * 2));
@@ -225,7 +225,7 @@ PinConfig::OutMode Pin::_OutMode::getter() const
     return static_cast<PinConfig::OutMode>(
         (owner.port.OTYPER >> owner._pin) & GPIO_OTYPER_OT_0);
 }
-void Pin::_OutMode::setter(const PinConfig::OutMode value)
+void Pin::_OutMode::setter(const PinConfig::OutMode value) const
 {
     uint32_t temp = owner.port.OTYPER;
     temp &= ~(GPIO_OTYPER_OT_0 << owner._pin);
@@ -238,7 +238,7 @@ PinConfig::EXTIMode Pin::_EXTIMode::getter() const
     return static_cast<PinConfig::EXTIMode>(
         bool(EXTI_IMR & owner._mask) | (bool(EXTI_EMR & owner._mask) << 1));
 }
-void Pin::_EXTIMode::setter(const PinConfig::EXTIMode value)
+void Pin::_EXTIMode::setter(const PinConfig::EXTIMode value) const
 {
     uint32_t temp;
     switch (value)
@@ -275,7 +275,7 @@ PinConfig::Trigger Pin::_Trigger::getter() const
     return static_cast<PinConfig::Trigger>(
         bool(EXTI_RTSR & owner._mask) | (bool(EXTI_FTSR & owner._mask) << 1));
 }
-void Pin::_Trigger::setter(const PinConfig::Trigger value)
+void Pin::_Trigger::setter(const PinConfig::Trigger value) const
 {
     uint32_t temp;
     switch (value)
@@ -320,7 +320,7 @@ PinConfig::Pull Pin::_Pull::getter() const
     return static_cast<PinConfig::Pull>(
         (owner.port.PUPDR >> (owner._pin * 2)) & GPIO_PUPDR_PUPDR0);
 }
-void Pin::_Pull::setter(const PinConfig::Pull value)
+void Pin::_Pull::setter(const PinConfig::Pull value) const
 {
     uint32_t temp = owner.port.PUPDR;
     temp &= ~(GPIO_PUPDR_PUPDR0 << (owner._pin * 2));
@@ -333,7 +333,7 @@ PinConfig::Speed Pin::_Speed::getter() const
     return static_cast<PinConfig::Speed>(
         (owner.port.OSPEEDR >> (owner._pin * 2)) & GPIO_OSPEEDER_OSPEEDR0);
 }
-void Pin::_Speed::setter(const PinConfig::Speed value)
+void Pin::_Speed::setter(const PinConfig::Speed value) const
 {
     uint32_t temp = owner.port.OSPEEDR;
     temp &= ~(GPIO_OSPEEDER_OSPEEDR0 << (owner._pin * 2));
@@ -346,7 +346,7 @@ uint8_t Pin::_Alternate::getter() const
     return static_cast<uint8_t>(
         (owner.port.AFR[owner._pin >> 3] >> ((owner._pin & 0x7) << 2)) & 0xFU);
 }
-void Pin::_Alternate::setter(const uint8_t value)
+void Pin::_Alternate::setter(const uint8_t value) const
 {
     uint32_t temp = owner.port.AFR[owner._pin >> 3];
     temp &= ~(static_cast<uint32_t>(0xFU) << ((owner._pin & 0x7) << 2));

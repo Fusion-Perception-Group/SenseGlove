@@ -221,7 +221,7 @@ class Pin
         using _Property<uint8_t>::_Property;
         using _Property<uint8_t>::operator =;
         uint8_t getter() const override { return owner._pin; }
-        void setter(const uint8_t value) override
+        void setter(const uint8_t value) const override
         {
             owner._pin = value;
             owner._mask = 1 << value;
@@ -245,7 +245,7 @@ class Pin
             }
             return hidden::interrupt_callbacks[owner._pin];
         }
-        void setter(const CallbackType value) override
+        void setter(const CallbackType value) const override
         {
             if (owner._pin >= GPIO_PINS_N)
             {
@@ -259,49 +259,49 @@ class Pin
         using _Property<PinConfig::IO>::_Property;
         using _Property<PinConfig::IO>::operator =;
         PinConfig::IO getter() const override;
-        void setter(const PinConfig::IO value) override;
+        void setter(const PinConfig::IO value) const override;
     };
     struct _OutMode : _Property<PinConfig::OutMode>
     {
         using _Property<PinConfig::OutMode>::_Property;
         using _Property<PinConfig::OutMode>::operator =;
         PinConfig::OutMode getter() const override;
-        void setter(const PinConfig::OutMode value) override;
+        void setter(const PinConfig::OutMode value) const override;
     };
     struct _EXTIMode : _Property<PinConfig::EXTIMode>
     {
         using _Property<PinConfig::EXTIMode>::_Property;
         using _Property<PinConfig::EXTIMode>::operator =;
         PinConfig::EXTIMode getter() const override;
-        void setter(const PinConfig::EXTIMode value) override;
+        void setter(const PinConfig::EXTIMode value) const override;
     };
     struct _Trigger : _Property<PinConfig::Trigger>
     {
         using _Property<PinConfig::Trigger>::_Property;
         using _Property<PinConfig::Trigger>::operator =;
         PinConfig::Trigger getter() const override;
-        void setter(const PinConfig::Trigger value) override;
+        void setter(const PinConfig::Trigger value) const override;
     };
     struct _Pull : _Property<PinConfig::Pull>
     {
         using _Property<PinConfig::Pull>::_Property;
         using _Property<PinConfig::Pull>::operator =;
         PinConfig::Pull getter() const override;
-        void setter(const PinConfig::Pull value) override;
+        void setter(const PinConfig::Pull value) const override;
     };
     struct _Speed : _Property<PinConfig::Speed>
     {
         using _Property<PinConfig::Speed>::_Property;
         using _Property<PinConfig::Speed>::operator =;
         PinConfig::Speed getter() const override;
-        void setter(const PinConfig::Speed value) override;
+        void setter(const PinConfig::Speed value) const override;
     };
     struct _Alternate : _Property<uint8_t>
     {
         using _Property<uint8_t>::_Property;
         using _Property<uint8_t>::operator =;
         uint8_t getter() const override;
-        void setter(const uint8_t value) override;
+        void setter(const uint8_t value) const override;
     };
 public:
     hidden::_Port & port;

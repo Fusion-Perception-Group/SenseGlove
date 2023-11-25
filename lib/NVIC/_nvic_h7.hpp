@@ -1,6 +1,7 @@
 #pragma once
 
 #include "userconfig.hpp"
+#include <cstdint>
 
 #if defined(__VERMIL_STM32H7) && !__VERMIL_STM32_USE_GENERIC
 
@@ -11,7 +12,7 @@ namespace stm32
 namespace nvic
 {
 
-enum IRQn_Type
+enum IRQn_Type : int16_t
 {
     /******  Cortex-M Processor Exceptions Numbers *******************************************************/
     NonMaskableInt_IRQn = -14,    /*!< 2 Non Maskable Interrupt                                          */

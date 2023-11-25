@@ -194,6 +194,115 @@ static inline TIM_HandleTypeDef & enable_clock(const BasicTimer & t)
     throw std::invalid_argument("Invalid timer");
 }
 
+static inline void disable_clock(const BasicTimer & t)
+{
+    const auto ptr = reinterpret_cast<TIM_TypeDef *>(&t.reg);
+
+    if (false) {}
+    #if defined(TIM1)
+    else if (ptr == TIM1)
+    {
+        __HAL_RCC_TIM1_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM2)
+    else if (ptr == TIM2)
+    {
+        __HAL_RCC_TIM2_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM3)
+    else if (ptr == TIM3)
+    {
+        __HAL_RCC_TIM3_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM4)
+    else if (ptr == TIM4)
+    {
+        __HAL_RCC_TIM4_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM5)
+    else if (ptr == TIM5)
+    {
+        __HAL_RCC_TIM5_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM6)
+    else if (ptr == TIM6)
+    {
+        __HAL_RCC_TIM6_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM7)
+    else if (ptr == TIM7)
+    {
+        __HAL_RCC_TIM7_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM8)
+    else if (ptr == TIM8)
+    {
+        __HAL_RCC_TIM8_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM9)
+    else if (ptr == TIM9)
+    {
+        __HAL_RCC_TIM9_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM10)
+    else if (ptr == TIM10)
+    {
+        __HAL_RCC_TIM10_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM11)
+    else if (ptr == TIM11)
+    {
+        __HAL_RCC_TIM11_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM12)
+    else if (ptr == TIM12)
+    {
+        __HAL_RCC_TIM12_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM13)
+    else if (ptr == TIM13)
+    {
+        __HAL_RCC_TIM13_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM14)
+    else if (ptr == TIM14)
+    {
+        __HAL_RCC_TIM14_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM15)
+    else if
+    {
+        __HAL_RCC_TIM15_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM16)
+    else if (ptr == TIM16)
+    {
+        __HAL_RCC_TIM16_CLK_DISABLE();
+    }
+    #endif
+    #if defined(TIM17)
+    else if (ptr == TIM17)
+    {
+        __HAL_RCC_TIM17_CLK_DISABLE();
+    }
+    #endif
+}
+
 static inline TIM_Base_InitTypeDef TimeBaseConfigConv(const TimeBaseConfig &config)
 {
     TIM_Base_InitTypeDef init;
@@ -316,7 +425,7 @@ static inline TIM_ClockConfigTypeDef ClockConfigConv(const ClockSourceConfig & c
     return clock_config;
 }
 
-void BasicTimer::set_time_base(const TimeBaseConfig &config) noexcept
+void BasicTimer::set_time_base(const TimeBaseConfig &config) const noexcept
 {
     auto & htim = enable_clock(*this);
 
@@ -327,7 +436,7 @@ void BasicTimer::set_time_base(const TimeBaseConfig &config) noexcept
     HAL_TIM_Base_Init(&htim);
 }
 
-void BasicTimer::set_clock_source(const ClockSourceConfig &config) noexcept
+void BasicTimer::set_clock_source(const ClockSourceConfig &config) const noexcept
 {
     auto & htim = enable_clock(*this);
 
@@ -337,7 +446,7 @@ void BasicTimer::set_clock_source(const ClockSourceConfig &config) noexcept
     HAL_TIM_ConfigClockSource(&htim, &clock_config);
 }
 
-void BasicTimer::set_master(const MasterConfig &config) noexcept
+void BasicTimer::set_master(const MasterConfig &config) const noexcept
 {
     auto & htim = enable_clock(*this);
 
@@ -376,6 +485,19 @@ void BasicTimer::set_master(const MasterConfig &config) noexcept
         reg.SMCR = (reg.SMCR & ~TIM_SMCR_MSM) | master_output_trigger;
 }
 
+void BasicTimer::init() const noexcept
+{
+    enable_clock(*this);
+    set_time_base(TimeBaseConfig());
+    set_clock_source(ClockSourceConfig());
+    set_master(MasterConfig());
+}
+
+void BasicTimer::deinit() const noexcept
+{
+    disable_clock(*this);
+}
+
 void BasicTimer::enable_irq() const noexcept
 {
     enable_clock(*this);
@@ -391,75 +513,73 @@ void BasicTimer::disable_irq() const noexcept
 }
 
 #ifdef TIM1_BASE
-AdvancedTimer Timer1(detail::TIM1_Reg, nvic::TIM1_UP_TIM10_IRQn,
+const AdvancedTimer Timer1(detail::TIM1_Reg, nvic::TIM1_UP_TIM10_IRQn,
     nvic::TIM1_BRK_TIM9_IRQn, nvic::TIM1_TRG_COM_TIM11_IRQn, nvic::TIM1_CC_IRQn);
 #endif
 
 #ifdef TIM2_BASE
-GeneralPurposeTimer Timer2(detail::TIM2_Reg, nvic::TIM2_IRQn, ClockSourceConfig(),
-    TimeBaseConfig(), 0xFFFFFFFFU);
+const GeneralPurposeTimer Timer2(detail::TIM2_Reg, nvic::TIM2_IRQn, 0xFFFFFFFFU);
 #endif
 
 #ifdef TIM3_BASE
-GeneralPurposeTimer Timer3(detail::TIM3_Reg, nvic::TIM3_IRQn);
+const GeneralPurposeTimer Timer3(detail::TIM3_Reg, nvic::TIM3_IRQn);
 #endif
 
 #ifdef TIM4_BASE
-GeneralPurposeTimer Timer4(detail::TIM4_Reg, nvic::TIM4_IRQn);
+const GeneralPurposeTimer Timer4(detail::TIM4_Reg, nvic::TIM4_IRQn);
 #endif
 
 #ifdef TIM5_BASE
-GeneralPurposeTimer Timer5(detail::TIM2_Reg, nvic::TIM5_IRQn, ClockSourceConfig(),
-    TimeBaseConfig(), 0xFFFFFFFFU);
+const GeneralPurposeTimer Timer5(detail::TIM2_Reg, nvic::TIM5_IRQn, 0xFFFFFFFFU);
 #endif
 
 #ifdef TIM6_BASE
-BasicTimer Timer6(detail::TIM6_Reg, nvic::TIM6_IRQn);
+const BasicTimer Timer6(detail::TIM6_Reg, nvic::TIM6_IRQn);
 #endif
 
 #ifdef TIM7_BASE
-BasicTimer Timer7(detail::TIM7_Reg, nvic::TIM7_IRQn);
+const BasicTimer Timer7(detail::TIM7_Reg, nvic::TIM7_IRQn);
 #endif
 
 #ifdef TIM8_BASE
-AdvancedTimer Timer8(detail::TIM8_Reg, nvic::TIM8_UP_TIM13_IRQn,
+const AdvancedTimer Timer8(detail::TIM8_Reg, nvic::TIM8_UP_TIM13_IRQn,
     nvic::TIM8_BRK_TIM12_IRQn, nvic::TIM8_TRG_COM_TIM14_IRQn, nvic::TIM8_CC_IRQn);
 #endif
 
 #ifdef TIM9_BASE
-GeneralPurposeTimer_2CH Timer9(detail::TIM9_Reg, nvic::TIM1_BRK_TIM9_IRQn);
+const GeneralPurposeTimer_2CH Timer9(detail::TIM9_Reg, nvic::TIM1_BRK_TIM9_IRQn);
 #endif
 
 #ifdef TIM10_BASE
-GeneralPurposeTimer_2CH Timer10(detail::TIM10_Reg, nvic::TIM1_UP_TIM10_IRQn);
+const GeneralPurposeTimer_2CH Timer10(detail::TIM10_Reg, nvic::TIM1_UP_TIM10_IRQn);
 #endif
 
 #ifdef TIM11_BASE
-GeneralPurposeTimer_2CH Timer11(detail::TIM11_Reg, nvic::TIM1_TRG_COM_TIM11_IRQn);
+const GeneralPurposeTimer_2CH Timer11(detail::TIM11_Reg, nvic::TIM1_TRG_COM_TIM11_IRQn);
 #endif
 
 #ifdef TIM12_BASE
-GeneralPurposeTimer_2CH Timer12(detail::TIM12_Reg, nvic::TIM8_BRK_TIM12_IRQn);
+const GeneralPurposeTimer_2CH Timer12(detail::TIM12_Reg, nvic::TIM8_BRK_TIM12_IRQn);
 #endif
 
 #ifdef TIM13_BASE
-GeneralPurposeTimer_2CH Timer13(detail::TIM13_Reg, nvic::TIM8_UP_TIM13_IRQn);
+const GeneralPurposeTimer_2CH Timer13(detail::TIM13_Reg, nvic::TIM8_UP_TIM13_IRQn);
 #endif
 
 #ifdef TIM14_BASE
-GeneralPurposeTimer_2CH Timer14(detail::TIM14_Reg, nvic::TIM8_TRG_COM_TIM14_IRQn);
+const GeneralPurposeTimer_2CH Timer14(detail::TIM14_Reg, nvic::TIM8_TRG_COM_TIM14_IRQn);
 #endif
 
 #ifdef TIM15_BASE
-GeneralPurposeTimer_2CH Timer15(detail::TIM15_Reg, nvic::TIM15_IRQn);
+const GeneralPurposeTimer_2CH Timer15(detail::TIM15_Reg, nvic::TIM15_IRQn);
 #endif
 
 #ifdef TIM16_BASE
-GeneralPurposeTimer_2CH Timer16(detail::TIM16_Reg, nvic::TIM16_IRQn);
+const GeneralPurposeTimer_2CH Timer16(detail::TIM16_Reg, nvic::TIM16_IRQn);
 #endif
 
 #ifdef TIM17_BASE
-GeneralPurposeTimer_2CH Timer17(detail::TIM17_Reg, nvic::TIM17_IRQn);
+const GeneralPurposeTimer_2CH Timer17(detail::TIM17_Reg, nvic::TIM17_IRQn);
 #endif
 
 extern "C"
