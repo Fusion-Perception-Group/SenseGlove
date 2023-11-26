@@ -55,92 +55,92 @@ void DMA_M2M::deinit() const noexcept
     __HAL_RCC_DMA2_CLK_DISABLE();
 }
 
-const DMA DirectMemAccess1(detail::DMA1Reg);
-const DMA_M2M DirectMemAccess2(detail::DMA2Reg);
+const DMA Dma1(detail::DMA1Reg);
+const DMA_M2M Dma2(detail::DMA2Reg);
 
 extern "C"
 {
 #ifdef DMA1
 void DMA1_Stream0_IRQHandler()
 {
-    DirectMemAccess1.streams[0].global_irq_handler();
+    Dma1.streams[0].global_irq_handler();
 }
 
 void DMA1_Stream1_IRQHandler()
 {
-    DirectMemAccess1.streams[1].global_irq_handler();
+    Dma1.streams[1].global_irq_handler();
 }
 
 void DMA1_Stream2_IRQHandler()
 {
-    DirectMemAccess1.streams[2].global_irq_handler();
+    Dma1.streams[2].global_irq_handler();
 }
 
 void DMA1_Stream3_IRQHandler()
 {
-    DirectMemAccess1.streams[3].global_irq_handler();
+    Dma1.streams[3].global_irq_handler();
 }
 
 void DMA1_Stream4_IRQHandler()
 {
-    DirectMemAccess1.streams[4].global_irq_handler();
+    Dma1.streams[4].global_irq_handler();
 }
 
 void DMA1_Stream5_IRQHandler()
 {
-    DirectMemAccess1.streams[5].global_irq_handler();
+    Dma1.streams[5].global_irq_handler();
 }
 
 void DMA1_Stream6_IRQHandler()
 {
-    DirectMemAccess1.streams[6].global_irq_handler();
+    Dma1.streams[6].global_irq_handler();
 }
 
 void DMA1_Stream7_IRQHandler()
 {
-    DirectMemAccess1.streams[7].global_irq_handler();
+    Dma1.streams[7].global_irq_handler();
 }
 #endif
 
 #ifdef DMA2
 void DMA2_Stream0_IRQHandler()
 {
-    DirectMemAccess2.streams[0].global_irq_handler();
+    Dma2.streams[0].global_irq_handler();
 }
 
 void DMA2_Stream1_IRQHandler()
 {
-    DirectMemAccess2.streams[1].global_irq_handler();
+    Dma2.streams[1].global_irq_handler();
 }
 
 void DMA2_Stream2_IRQHandler()
 {
-    DirectMemAccess2.streams[2].global_irq_handler();
+    Dma2.streams[2].global_irq_handler();
 }
 
 void DMA2_Stream3_IRQHandler()
 {
-    DirectMemAccess2.streams[3].global_irq_handler();
+    Dma2.streams[3].global_irq_handler();
 }
 
 void DMA2_Stream4_IRQHandler()
 {
-    DirectMemAccess2.streams[4].global_irq_handler();
+    Dma2.streams[4].global_irq_handler();
 }
 
 void DMA2_Stream5_IRQHandler()
 {
-    DirectMemAccess2.streams[5].global_irq_handler();
+    Dma2.streams[5].global_irq_handler();
 }
 
 void DMA2_Stream6_IRQHandler()
 {
-    DirectMemAccess2.streams[6].global_irq_handler();
+    Dma2.streams[6].global_irq_handler();
 }
 
 void DMA2_Stream7_IRQHandler()
 {
-    DirectMemAccess2.streams[7].global_irq_handler();
+    Dma2.streams[7].global_irq_handler();
 }
 #endif
 }

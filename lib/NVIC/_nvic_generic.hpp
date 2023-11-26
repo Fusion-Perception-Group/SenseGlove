@@ -70,7 +70,6 @@ enum IRQn_Type
     USART3_IRQn = 39,             /*!< USART3 global Interrupt                                           */
     EXTI15_10_IRQn = 40,          /*!< External Line[15:10] Interrupts                                   */
     RTC_Alarm_IRQn = 41,          /*!< RTC Alarm (A and B) through EXTI Line Interrupt                   */
-    OTG_FS_WKUP_IRQn = 42,        /*!< USB OTG FS Wakeup through EXTI line interrupt                     */
     TIM8_BRK_TIM12_IRQn = 43,     /*!< TIM8 Break Interrupt and TIM12 global interrupt                   */
     TIM8_UP_TIM13_IRQn = 44,      /*!< TIM8 Update Interrupt and TIM13 global interrupt                  */
     TIM8_TRG_COM_TIM14_IRQn = 45, /*!< TIM8 Trigger and Commutation Interrupt and TIM14 global interrupt */
@@ -92,7 +91,6 @@ enum IRQn_Type
     ETH_IRQn = 61,                /*!< Ethernet global Interrupt                                         */
     ETH_WKUP_IRQn = 62,           /*!< Ethernet Wakeup through EXTI line Interrupt                       */
     FDCAN_CAL_IRQn = 63,          /*!< FDCAN Calibration unit Interrupt                                  */
-    OTG_FS_IRQn = 67,             /*!< USB OTG FS global Interrupt                                       */
     DMA2_Stream5_IRQn = 68,       /*!< DMA2 Stream 5 global interrupt                                    */
     DMA2_Stream6_IRQn = 69,       /*!< DMA2 Stream 6 global interrupt                                    */
     DMA2_Stream7_IRQn = 70,       /*!< DMA2 Stream 7 global interrupt                                    */
@@ -124,8 +122,6 @@ enum IRQn_Type
     SPDIF_RX_IRQn = 97,           /*!< SPDIF-RX global Interrupt                                         */
     OTG_FS_EP1_OUT_IRQn = 98,     /*!< USB OTG HS2 global interrupt                                      */
     OTG_FS_EP1_IN_IRQn = 99,      /*!< USB OTG HS2 End Point 1 Out global interrupt                      */
-    OTG_FS_WKUP_IRQn = 100,       /*!< USB OTG HS2 End Point 1 In global interrupt                       */
-    OTG_FS_IRQn = 101,            /*!< USB OTG HS2 Wakeup through EXTI interrupt                         */
     DMAMUX1_OVR_IRQn = 102,       /*!<DMAMUX1 Overrun interrupt                                          */
     HRTIM1_Master_IRQn = 103,     /*!< HRTIM Master Timer global Interrupts                              */
     HRTIM1_TIMA_IRQn = 104,       /*!< HRTIM Timer A global Interrupt                                    */

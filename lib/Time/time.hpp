@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <stdexcept>
 #include <chrono>
 #include "trace.hpp"
 #include "userconfig.hpp"
@@ -11,6 +12,23 @@ namespace stm32
 {
 namespace time
 {
+    class DurationExceeded : public std::invalid_argument
+    {
+    public:
+        DurationExceeded(const char *msg) : std::invalid_argument(msg) {}
+    };
+    
+    class BaseTimer
+    {
+    public:
+        virtual ~BaseTimer() = default;
+        /**
+         * @brief delay a duration
+         * 
+         * @param duration
+         */
+        virtual void delay(const std::chrono::nanoseconds d) const = 0;
+    };
     class DWTTimer
     {
         dwt::DataWatchpointTrigger dwt = {};
@@ -30,7 +48,7 @@ namespace time
             return bool(dwt.CYCCNT - start);
         }
 
-        inline void delay(const std::chrono::duration<uint32_t, std::nano> &ns) const
+        inline void delay(const std::chrono::nanoseconds &ns) const
         {
             delay_ns(ns.count());
         }
@@ -49,10 +67,10 @@ namespace time
             while (dwt.CYCCNT - start < clocks);
         }
 
-        inline void delay_ns(const uint32_t ns) const
+        inline void delay_ns(const uint64_t ns) const
         {
             uint_fast32_t start = dwt.CYCCNT;
-            uint_fast32_t clocks = ns * (SystemCoreClock / 1000000000U);
+            uint_fast32_t clocks = ns * SystemCoreClock / 1000000000U;
             while (dwt.CYCCNT - start < clocks);
         }
 

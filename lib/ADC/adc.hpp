@@ -102,24 +102,9 @@ public:
     void init() const noexcept;
     void deinit() const noexcept;
 
-    void enable() const noexcept
-    {
-        reg.CR2 |= 1U;
-    }
-
-    void disable() const noexcept
-    {
-        reg.CR2 &= ~1U;
-    }
-
     void start_regular() const noexcept
     {
         reg.CR2 |= 1U << 30;
-    }
-
-    void stop_regular() const noexcept
-    {
-        reg.CR2 &= ~(1U << 30);
     }
 
     bool is_regular_running() const noexcept
@@ -478,6 +463,10 @@ public:
         on_overrun_handler();
     }
 
+    static void enable_irq() noexcept
+    {
+        nvic::enable_irq(ADC_IRQn);
+    }
 };
 
 class InjectedADC : public RegularADC
@@ -489,12 +478,31 @@ public:
     
     void start_injected() const noexcept
     {
-        reg.CR2 |= 1U << 21;
+        reg.CR2 |= 1U << 22U;
     }
 
-    void stop_injected() const noexcept
+    /**
+     * @brief Get the injected data by order
+     * 
+     * @param order 
+     * @return uint16_t 
+     * @throw std::invalid_argument if order is out of range
+     */
+    uint16_t get_injected_data(uint8_t order) const
     {
-        reg.CR2 &= ~(1U << 21);
+        switch (order)
+        {
+        case 0:
+            return reg.JDR1;
+        case 1:
+            return reg.JDR2;
+        case 2:
+            return reg.JDR3;
+        case 3:
+            return reg.JDR4;
+        default:
+            throw std::invalid_argument("order out of range");
+        }
     }
 
     bool is_injected_running() const noexcept
@@ -656,8 +664,8 @@ public:
         const uint32_t mask = 0x4U;
         if (reg.SR & mask)
         {
-            reg.SR &= ~mask;
             reg.SR &= ~0x8U;  // clear started flag
+            reg.SR &= ~mask;
             if (on_injected_done)
                 on_injected_done();
         }
@@ -671,9 +679,9 @@ public:
     }
 };
 
-extern const InjectedADC InjADC1;
-extern const InjectedADC InjADC2;
-extern const InjectedADC InjADC3;
+extern const InjectedADC Adc1;
+extern const InjectedADC Adc2;
+extern const InjectedADC Adc3;
 
 }
 }

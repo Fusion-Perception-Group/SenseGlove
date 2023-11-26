@@ -12,6 +12,8 @@ namespace stm32
 {
 namespace clock
 {
+namespace tim
+{
 using CallbackType = std::function<void()>;
 extern uint32_t &SystemCoreClock;
 namespace detail
@@ -38,42 +40,34 @@ namespace detail
         volatile uint32_t BDTR;  /*!< TIM break and dead-time register,         Address offset: 0x44 */
         volatile uint32_t DCR;   /*!< TIM DMA control register,                 Address offset: 0x48 */
         volatile uint32_t DMAR;  /*!< TIM DMA address for full transfer,        Address offset: 0x4C */
+        volatile uint32_t OR;    /*!< TIM option register,                      Address offset: 0x50 */
     #if defined(__VERMIL_STM32HX)
-        uint32_t RESERVED1;      /*!< Reserved, 0x50                                                 */
         volatile uint32_t CCMR3; /*!< TIM capture/compare mode register 3,      Address offset: 0x54 */
         volatile uint32_t CCR5;  /*!< TIM capture/compare register5,            Address offset: 0x58 */
         volatile uint32_t CCR6;  /*!< TIM capture/compare register6,            Address offset: 0x5C */
         volatile uint32_t AF1;   /*!< TIM alternate function option register 1, Address offset: 0x60 */
         volatile uint32_t AF2;   /*!< TIM alternate function option register 2, Address offset: 0x64 */
         volatile uint32_t TISEL; /*!< TIM Input Selection register,             Address offset: 0x68 */
-    #elif defined(__VERMIL_STM32FX)
-        volatile uint32_t OR;    /*!< TIM option register,                      Address offset: 0x50 */
     #endif
     };
 
-    #if __VERMIL_STM32_USE_GENERIC
-        #define __Register_Type Register
-    #else
-        #define __Register_Type Register &
-    #endif
-
-    extern __Register_Type TIM1_Reg;
-    extern __Register_Type TIM2_Reg;
-    extern __Register_Type TIM3_Reg;
-    extern __Register_Type TIM4_Reg;
-    extern __Register_Type TIM5_Reg;
-    extern __Register_Type TIM6_Reg;
-    extern __Register_Type TIM7_Reg;
-    extern __Register_Type TIM8_Reg;
-    extern __Register_Type TIM9_Reg;
-    extern __Register_Type TIM10_Reg;
-    extern __Register_Type TIM11_Reg;
-    extern __Register_Type TIM12_Reg;
-    extern __Register_Type TIM13_Reg;
-    extern __Register_Type TIM14_Reg;
-    extern __Register_Type TIM15_Reg;
-    extern __Register_Type TIM16_Reg;
-    extern __Register_Type TIM17_Reg;
+    extern Register &TIM1_Reg;
+    extern Register &TIM2_Reg;
+    extern Register &TIM3_Reg;
+    extern Register &TIM4_Reg;
+    extern Register &TIM5_Reg;
+    extern Register &TIM6_Reg;
+    extern Register &TIM7_Reg;
+    extern Register &TIM8_Reg;
+    extern Register &TIM9_Reg;
+    extern Register &TIM10_Reg;
+    extern Register &TIM11_Reg;
+    extern Register &TIM12_Reg;
+    extern Register &TIM13_Reg;
+    extern Register &TIM14_Reg;
+    extern Register &TIM15_Reg;
+    extern Register &TIM16_Reg;
+    extern Register &TIM17_Reg;
 
     inline constexpr uint16_t int_sqrt32(uint32_t x)
     {
@@ -288,6 +282,22 @@ protected:
         }
     };
 public:
+    using ClockSource = clock::tim::ClockSource;
+    using ClockPolarity = clock::tim::ClockPolarity;
+    using ClockPrescaler = clock::tim::ClockPrescaler;
+    using CountMode = clock::tim::CountMode;
+    using ClockDivision = clock::tim::ClockDivision;
+    using MasterTriggerMode = clock::tim::MasterTriggerMode;
+    using OutputCompareMode = clock::tim::OutputCompareMode;
+    using EdgeTrigger = clock::tim::EdgeTrigger;
+    using IOSelection = clock::tim::IOSelection;
+    using CallbackType = clock::tim::CallbackType;
+    using TimeBaseConfig = clock::tim::TimeBaseConfig;
+    using ClockSourceConfig = clock::tim::ClockSourceConfig;
+    using MasterConfig = clock::tim::MasterConfig;
+    using CaptureCompareConfig = clock::tim::CaptureCompareConfig;
+    using Register = clock::tim::detail::Register;
+
     detail::Register &reg;
     mutable uint32_t extern_freq = 0U;  // external clock frequency, user has the responsibility to make sure it is correct, 0 for unknown
     volatile uint32_t & counter;
@@ -661,6 +671,12 @@ public:
             _timer.reg.CCER &= ~(1U << (order * 4));
         }
 
+        /**
+         * @brief 
+         * 
+         * @param config 
+         * @throw std::invalid_argument if order is not in [0, 3]
+         */
         virtual void load(const CaptureCompareConfig &config)
         {
             disable();
@@ -950,6 +966,19 @@ public:
             break_irqn(brk_iqn), trigger_com_irqn(tr_com_iqn), capcom_irqn(cc_iqn)
         {}
     
+    /**
+     * @brief Set the repetition counter
+     * 
+     * @param value 
+     * @throw std::invalid_argument if value exceeds maximum repetition counter
+     */
+    void set_repetition(const uint32_t value) const
+    {
+        if (value > MAX_REP_COUNTER)
+            throw std::invalid_argument("value exceeds maximum repetition counter");
+        reg.RCR = value;
+    }
+    
     void enable_break_irq() const noexcept
     {
         nvic::enable_irq(break_irqn);
@@ -1037,23 +1066,43 @@ public:
     }
 };
 
-extern const AdvancedTimer Timer1;
-extern const GeneralPurposeTimer Timer2;
-extern const GeneralPurposeTimer Timer3;
-extern const GeneralPurposeTimer Timer4;
-extern const GeneralPurposeTimer Timer5;
-extern const BasicTimer Timer6;
-extern const BasicTimer Timer7;
-extern const AdvancedTimer Timer8;
-extern const GeneralPurposeTimer_2CH Timer9;
-extern const GeneralPurposeTimer_2CH Timer10;
-extern const GeneralPurposeTimer_2CH Timer11;
-extern const GeneralPurposeTimer_2CH Timer12;
-extern const GeneralPurposeTimer_2CH Timer13;
-extern const GeneralPurposeTimer_2CH Timer14;
-extern const GeneralPurposeTimer_2CH Timer15;
-extern const GeneralPurposeTimer_2CH Timer16;
-extern const GeneralPurposeTimer_2CH Timer17;
+extern const AdvancedTimer Tim1;
+extern const GeneralPurposeTimer Tim2;
+extern const GeneralPurposeTimer Tim3;
+extern const GeneralPurposeTimer Tim4;
+extern const GeneralPurposeTimer Tim5;
+extern const BasicTimer Tim6;
+extern const BasicTimer Tim7;
+extern const AdvancedTimer Tim8;
+extern const GeneralPurposeTimer_2CH Tim9;
+extern const GeneralPurposeTimer_2CH Tim10;
+extern const GeneralPurposeTimer_2CH Tim11;
+extern const GeneralPurposeTimer_2CH Tim12;
+extern const GeneralPurposeTimer_2CH Tim13;
+extern const GeneralPurposeTimer_2CH Tim14;
+extern const GeneralPurposeTimer_2CH Tim15;
+extern const GeneralPurposeTimer_2CH Tim16;
+extern const GeneralPurposeTimer_2CH Tim17;
+
+}
+
+using tim::Tim1;
+using tim::Tim2;
+using tim::Tim3;
+using tim::Tim4;
+using tim::Tim5;
+using tim::Tim6;
+using tim::Tim7;
+using tim::Tim8;
+using tim::Tim9;
+using tim::Tim10;
+using tim::Tim11;
+using tim::Tim12;
+using tim::Tim13;
+using tim::Tim14;
+using tim::Tim15;
+using tim::Tim16;
+using tim::Tim17;
 
 }
 }

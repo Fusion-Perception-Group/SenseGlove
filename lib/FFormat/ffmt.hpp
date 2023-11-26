@@ -15,10 +15,10 @@ namespace vermils
     namespace ffmt
     {
         template <typename... T>
-        std::string format(const std::string &src, T &&...args);
+        std::string format(const std::string_view src, T &&...args);
 
         template <typename... T>
-        std::string format(const std::size_t maxsize, const std::string &src, T &&...args);
+        std::string format(const std::size_t maxsize, const std::string_view src, T &&...args);
     }
 }
 
@@ -565,36 +565,37 @@ namespace vermils
             }
         }
 
+        enum Format : uint_fast8_t
+        {
+            Decimal,
+            Hex,
+            Octal,
+            Binary,
+            Pointer,
+            Float,
+            Scientific,
+            DefaultFormat,
+        };
+        enum Align : uint_fast8_t
+        {
+            Left,
+            Center,
+            Right,
+        };
+
         /**
          * @brief Configuration for each {} in the string
          *
          */
         struct Placeholder
         {
-            enum Format : uint_fast8_t
-            {
-                Decimal,
-                Hex,
-                Octal,
-                Binary,
-                Pointer,
-                Float,
-                Scientific,
-            };
-            enum Align : uint_fast8_t
-            {
-                Left,
-                Center,
-                Right,
-            };
-
             size_t begin = 0;
             size_t end = 0;
             uint_fast16_t index = 0;
             uint_fast16_t padding = 0;
             uint_fast16_t precision = 6;
             Align align = Right;
-            Format format = Decimal;
+            Format format = DefaultFormat;
             char fill = ' ';
             bool show_positive = false;
             bool escape = false; // "{{" escape
@@ -610,7 +611,7 @@ namespace vermils
          * @param src
          * @return escape count
          */
-        inline size_t parse(HolderContainer &phs, const string &src)
+        inline size_t parse(HolderContainer &phs, const std::string_view &src)
         {
             const size_t length = src.length();
             size_t pos = 0;          // position of current character
@@ -692,19 +693,19 @@ namespace vermils
                     }
                     else if (src[pos] == '<')
                     {
-                        p.align = Placeholder::Left;
+                        p.align = Left;
                         ++pos;
                         goto Align;
                     }
                     else if (src[pos] == '^')
                     {
-                        p.align = Placeholder::Center;
+                        p.align = Center;
                         ++pos;
                         goto Align;
                     }
                     else if (src[pos] == '>')
                     {
-                        p.align = Placeholder::Right;
+                        p.align = Right;
                         ++pos;
                         goto Align;
                     }
@@ -747,31 +748,31 @@ namespace vermils
                         goto Loopend;
                     if (src[pos] == 'd')
                     {
-                        p.format = Placeholder::Decimal;
+                        p.format = Decimal;
                     }
                     else if (src[pos] == 'x')
                     {
-                        p.format = Placeholder::Hex;
+                        p.format = Hex;
                     }
                     else if (src[pos] == 'p')
                     {
-                        p.format = Placeholder::Pointer;
+                        p.format = Pointer;
                     }
                     else if (src[pos] == 'o')
                     {
-                        p.format = Placeholder::Octal;
+                        p.format = Octal;
                     }
                     else if (src[pos] == 'b')
                     {
-                        p.format = Placeholder::Binary;
+                        p.format = Binary;
                     }
                     else if (src[pos] == 'f')
                     {
-                        p.format = Placeholder::Float;
+                        p.format = Float;
                     }
                     else if (src[pos] == 'e')
                     {
-                        p.format = Placeholder::Scientific;
+                        p.format = Scientific;
                     }
                     else
                     {
@@ -802,13 +803,13 @@ namespace vermils
             size_t pos = 0;
             switch (p.align)
             {
-            case Placeholder::Left:
+            case Left:
                 if (p.fill != '0' || allow_trailing_0)
                     s.append(p.padding - s.length(), p.fill);
                 else
                     s.append(p.padding - s.length(), ' ');
                 break;
-            case Placeholder::Center:
+            case Center:
                 left = (p.padding - s.length()) / 2;
                 right = p.padding - s.length() - left;
                 if (move_sign && s.length() && (s[0] == '-' || s[0] == '+'))
@@ -821,7 +822,7 @@ namespace vermils
                 else
                     s.append(right, ' ');
                 break;
-            case Placeholder::Right:
+            case Right:
                 if (move_sign && s.length() && (s[0] == '-' || s[0] == '+'))
                 {
                     ++pos;
@@ -832,37 +833,24 @@ namespace vermils
             return s;
         }
 
-        inline constexpr string stringify(const string &arg, const Placeholder &p)
+
+        template <typename T>
+        inline constexpr string stringify(T &&arg, const Placeholder &p)
+            requires(!std::floating_point<T> && !std::integral<T> && std::convertible_to<T, string>)
         {
-            string s = arg;
-            return pad_str(s, p);
-        }
-        inline constexpr string stringify(string &&arg, const Placeholder &p)
-        {
-            string s = arg;
-            return pad_str(s, p);
-        }
-        inline constexpr string stringify(const char *str, const Placeholder &p)
-        {
-            string s(str);
-            return pad_str(s, p);
-        }
-        inline constexpr string stringify(bool b, const Placeholder &p)
-        {
-            string s = b ? "true" : "false";
+            std::string s(std::forward<T>(arg));
             return pad_str(s, p);
         }
 
-        template <typename T>
-        inline string stringify(T &&arg, const Placeholder &p)
-            requires(!std::floating_point<T> && !std::integral<T> && std::convertible_to<T, string>)
-        {
-            return std::string(std::forward<T>(arg));
-        }
+        template <std::integral T>  // forward declaration
+        inline string stringify(T arg, const Placeholder &p);
 
         template <std::floating_point T>
         inline string stringify(T arg, const Placeholder &p)
         {
+            if (p.format != Float && p.format != Scientific && p.format != DefaultFormat)
+                return stringify(static_cast<int64_t>(arg), p);
+
             if (std::isnan(arg))
                 return "nan";
             if (std::isinf(arg))
@@ -873,7 +861,7 @@ namespace vermils
             int length, K;
             bool negative = arg < 0;
             bool allow_trailing_0 = true;
-            Placeholder::Format format = p.format;
+            Format format = p.format;
             if (!arg)
             {
                 buf[0] = '0';
@@ -891,13 +879,13 @@ namespace vermils
             int guessed_l = p.precision + i_size + 2;
             int expo = 0;
 
-            if (format != Placeholder::Float && p.format != Placeholder::Scientific)
+            if (format == DefaultFormat)
             {
                 const int THRE = (p.padding ? p.padding : 24); // 24 is a personal choice
-                format = (guessed_l > THRE) ? Placeholder::Scientific : Placeholder::Float;
+                format = (guessed_l > THRE) ? Scientific : Float;
             }
 
-            if (format == Placeholder::Scientific)
+            if (format == Scientific)
             {
                 guessed_l = p.precision + 9;
                 expo = K + length - 1;
@@ -948,7 +936,7 @@ namespace vermils
                 }
             }
 
-            if (format == Placeholder::Scientific)
+            if (format == Scientific)
             {
                 s.push_back('e');
                 s.append(itostr(expo));
@@ -991,13 +979,14 @@ namespace vermils
 
             switch (p.format)
             {
-            case Placeholder::Decimal:
+            case DefaultFormat:
+            case Decimal:
             {
                 if (p.show_positive && nonneg)
                     s.push_back('+');
                 s += itostr(arg);
                 break;
-            case Placeholder::Hex:
+            case Hex:
                 size = std::max<size_t>(sizeof(T) * 2 + 1, p.padding);
                 s.reserve(size);
 
@@ -1023,7 +1012,7 @@ namespace vermils
                 }
                 break;
             }
-            case Placeholder::Pointer:
+            case Pointer:
             {
                 size = std::max<size_t>(sizeof(T) * 2, p.padding);
                 s.reserve(size);
@@ -1035,7 +1024,7 @@ namespace vermils
                 }
                 break;
             }
-            case Placeholder::Octal:
+            case Octal:
             {
                 bool allzero = true;
                 size = std::max<size_t>(sizeof(T) * 3 + 1, p.padding);
@@ -1067,7 +1056,7 @@ namespace vermils
                 }
                 break;
             }
-            case Placeholder::Binary:
+            case Binary:
             {
                 size = std::max<size_t>(sizeof(T) * 8 + 1, p.padding);
                 s.reserve(size);
@@ -1093,12 +1082,38 @@ namespace vermils
                 }
                 break;
             }
-            case Placeholder::Scientific:
-            case Placeholder::Float:
+            case Scientific:
+            case Float:
                 return stringify(double(arg), p);
             }
 
             return pad_str(s, p, false, true);
+        }
+
+        template <>
+        inline constexpr string stringify(bool b, const Placeholder &p)
+        {
+            string s = b ? "true" : "false";
+            return pad_str(s, p);
+        }
+
+        template <typename T>
+        inline string stringify(T * arg, const Placeholder &p)
+        {
+            if (p.format == DefaultFormat)
+            {
+                auto np = p;
+                np.format = Pointer;
+                return stringify(reinterpret_cast<uintptr_t>(arg), np);
+            }
+            return stringify(reinterpret_cast<uintptr_t>(arg), p);
+        }
+
+        template <>
+        inline constexpr string stringify(const char *str, const Placeholder &p)
+        {
+            string s(str);
+            return pad_str(s, p);
         }
 
         template <typename T>
@@ -1125,7 +1140,7 @@ namespace vermils
         }
 
         template <typename... T>
-        std::string format(const string &src, T &&...args)
+        std::string format(const std::string_view src, T &&...args)
         {
             HolderContainer phs;
             std::string ret;
@@ -1176,7 +1191,7 @@ namespace vermils
         }
 
         template <typename... T>
-        std::string format(const std::size_t maxsize, const std::string &src, T &&...args)
+        std::string format(const std::size_t maxsize, const std::string_view src, T &&...args)
         {
             HolderContainer phs;
             std::string ret;

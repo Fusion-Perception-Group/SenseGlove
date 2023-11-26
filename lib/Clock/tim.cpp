@@ -9,6 +9,62 @@ namespace stm32
 {
 namespace clock
 {
+namespace tim
+{
+    namespace detail
+    {
+        #if defined(TIM1_BASE)
+        Register & TIM1_Reg = *reinterpret_cast<Register *>(TIM1_BASE);
+        #endif
+        #if defined(TIM2_BASE)
+        Register & TIM2_Reg = *reinterpret_cast<Register *>(TIM2_BASE);
+        #endif
+        #if defined(TIM3_BASE)
+        Register & TIM3_Reg = *reinterpret_cast<Register *>(TIM3_BASE);
+        #endif
+        #if defined(TIM4_BASE)
+        Register & TIM4_Reg = *reinterpret_cast<Register *>(TIM4_BASE);
+        #endif
+        #if defined(TIM5_BASE)
+        Register & TIM5_Reg = *reinterpret_cast<Register *>(TIM5_BASE);
+        #endif
+        #if defined(TIM6_BASE)
+        Register & TIM6_Reg = *reinterpret_cast<Register *>(TIM6_BASE);
+        #endif
+        #if defined(TIM7_BASE)
+        Register & TIM7_Reg = *reinterpret_cast<Register *>(TIM7_BASE);
+        #endif
+        #if defined(TIM8_BASE)
+        Register & TIM8_Reg = *reinterpret_cast<Register *>(TIM8_BASE);
+        #endif
+        #if defined(TIM9_BASE)
+        Register & TIM9_Reg = *reinterpret_cast<Register *>(TIM9_BASE);
+        #endif
+        #if defined(TIM10_BASE)
+        Register & TIM10_Reg = *reinterpret_cast<Register *>(TIM10_BASE);
+        #endif
+        #if defined(TIM11_BASE)
+        Register & TIM11_Reg = *reinterpret_cast<Register *>(TIM11_BASE);
+        #endif
+        #if defined(TIM12_BASE)
+        Register & TIM12_Reg = *reinterpret_cast<Register *>(TIM12_BASE);
+        #endif
+        #if defined(TIM13_BASE)
+        Register & TIM13_Reg = *reinterpret_cast<Register *>(TIM13_BASE);
+        #endif
+        #if defined(TIM14_BASE)
+        Register & TIM14_Reg = *reinterpret_cast<Register *>(TIM14_BASE);
+        #endif
+        #if defined(TIM15_BASE)
+        Register & TIM15_Reg = *reinterpret_cast<Register *>(TIM15_BASE);
+        #endif
+        #if defined(TIM16_BASE)
+        Register & TIM16_Reg = *reinterpret_cast<Register *>(TIM16_BASE);
+        #endif
+        #if defined(TIM17_BASE)
+        Register & TIM17_Reg = *reinterpret_cast<Register *>(TIM17_BASE);
+        #endif
+    }
 /**
  * @brief enable clock and return handle
  * 
@@ -444,73 +500,73 @@ void BasicTimer::disable_irq() const noexcept
 }
 
 #ifdef TIM1_BASE
-const AdvancedTimer Timer1(detail::TIM1_Reg, nvic::TIM1_UP_TIM10_IRQn,
+const AdvancedTimer Tim1(detail::TIM1_Reg, nvic::TIM1_UP_TIM10_IRQn,
     nvic::TIM1_BRK_TIM9_IRQn, nvic::TIM1_TRG_COM_TIM11_IRQn, nvic::TIM1_CC_IRQn);
 #endif
 
 #ifdef TIM2_BASE
-const GeneralPurposeTimer Timer2(detail::TIM2_Reg, nvic::TIM2_IRQn, 0xFFFFFFFFU);
+const GeneralPurposeTimer Tim2(detail::TIM2_Reg, nvic::TIM2_IRQn, 0xFFFFFFFFU);
 #endif
 
 #ifdef TIM3_BASE
-const GeneralPurposeTimer Timer3(detail::TIM3_Reg, nvic::TIM3_IRQn);
+const GeneralPurposeTimer Tim3(detail::TIM3_Reg, nvic::TIM3_IRQn);
 #endif
 
 #ifdef TIM4_BASE
-const GeneralPurposeTimer Timer4(detail::TIM4_Reg, nvic::TIM4_IRQn);
+const GeneralPurposeTimer Tim4(detail::TIM4_Reg, nvic::TIM4_IRQn);
 #endif
 
 #ifdef TIM5_BASE
-const GeneralPurposeTimer Timer5(detail::TIM2_Reg, nvic::TIM5_IRQn, 0xFFFFFFFFU);
+const GeneralPurposeTimer Tim5(detail::TIM2_Reg, nvic::TIM5_IRQn, 0xFFFFFFFFU);
 #endif
 
 #ifdef TIM6_BASE
-const BasicTimer Timer6(detail::TIM6_Reg, nvic::TIM6_IRQn);
+const BasicTimer Tim6(detail::TIM6_Reg, nvic::TIM6_IRQn);
 #endif
 
 #ifdef TIM7_BASE
-const BasicTimer Timer7(detail::TIM7_Reg, nvic::TIM7_IRQn);
+const BasicTimer Tim7(detail::TIM7_Reg, nvic::TIM7_IRQn);
 #endif
 
 #ifdef TIM8_BASE
-const AdvancedTimer Timer8(detail::TIM8_Reg, nvic::TIM8_UP_TIM13_IRQn,
+const AdvancedTimer Tim8(detail::TIM8_Reg, nvic::TIM8_UP_TIM13_IRQn,
     nvic::TIM8_BRK_TIM12_IRQn, nvic::TIM8_TRG_COM_TIM14_IRQn, nvic::TIM8_CC_IRQn);
 #endif
 
 #ifdef TIM9_BASE
-const GeneralPurposeTimer_2CH Timer9(detail::TIM9_Reg, nvic::TIM1_BRK_TIM9_IRQn);
+const GeneralPurposeTimer_2CH Tim9(detail::TIM9_Reg, nvic::TIM1_BRK_TIM9_IRQn);
 #endif
 
 #ifdef TIM10_BASE
-const GeneralPurposeTimer_2CH Timer10(detail::TIM10_Reg, nvic::TIM1_UP_TIM10_IRQn);
+const GeneralPurposeTimer_2CH Tim10(detail::TIM10_Reg, nvic::TIM1_UP_TIM10_IRQn);
 #endif
 
 #ifdef TIM11_BASE
-const GeneralPurposeTimer_2CH Timer11(detail::TIM11_Reg, nvic::TIM1_TRG_COM_TIM11_IRQn);
+const GeneralPurposeTimer_2CH Tim11(detail::TIM11_Reg, nvic::TIM1_TRG_COM_TIM11_IRQn);
 #endif
 
 #ifdef TIM12_BASE
-const GeneralPurposeTimer_2CH Timer12(detail::TIM12_Reg, nvic::TIM8_BRK_TIM12_IRQn);
+const GeneralPurposeTimer_2CH Tim12(detail::TIM12_Reg, nvic::TIM8_BRK_TIM12_IRQn);
 #endif
 
 #ifdef TIM13_BASE
-const GeneralPurposeTimer_2CH Timer13(detail::TIM13_Reg, nvic::TIM8_UP_TIM13_IRQn);
+const GeneralPurposeTimer_2CH Tim13(detail::TIM13_Reg, nvic::TIM8_UP_TIM13_IRQn);
 #endif
 
 #ifdef TIM14_BASE
-const GeneralPurposeTimer_2CH Timer14(detail::TIM14_Reg, nvic::TIM8_TRG_COM_TIM14_IRQn);
+const GeneralPurposeTimer_2CH Tim14(detail::TIM14_Reg, nvic::TIM8_TRG_COM_TIM14_IRQn);
 #endif
 
 #ifdef TIM15_BASE
-const GeneralPurposeTimer_2CH Timer15(detail::TIM15_Reg, nvic::TIM15_IRQn);
+const GeneralPurposeTimer_2CH Tim15(detail::TIM15_Reg, nvic::TIM15_IRQn);
 #endif
 
 #ifdef TIM16_BASE
-const GeneralPurposeTimer_2CH Timer16(detail::TIM16_Reg, nvic::TIM16_IRQn);
+const GeneralPurposeTimer_2CH Tim16(detail::TIM16_Reg, nvic::TIM16_IRQn);
 #endif
 
 #ifdef TIM17_BASE
-const GeneralPurposeTimer_2CH Timer17(detail::TIM17_Reg, nvic::TIM17_IRQn);
+const GeneralPurposeTimer_2CH Tim17(detail::TIM17_Reg, nvic::TIM17_IRQn);
 #endif
 
 extern "C"
@@ -519,10 +575,10 @@ extern "C"
     void TIM1_UP_TIM10_IRQHandler()
     {
         #ifdef TIM1_BASE
-        clock::Timer1.on_reload_handler();
+        clock::Tim1.on_reload_handler();
         #endif
         #ifdef TIM10_BASE
-        clock::Timer10.global_irq_handler();
+        clock::Tim10.global_irq_handler();
         #endif
     }
     #endif
@@ -531,10 +587,10 @@ extern "C"
     void TIM1_BRK_TIM9_IRQHandler()
     {
         #ifdef TIM1_BASE
-        clock::Timer1.break_irq_handler();
+        clock::Tim1.break_irq_handler();
         #endif
         #ifdef TIM9_BASE
-        clock::Timer9.global_irq_handler();
+        clock::Tim9.global_irq_handler();
         #endif
     }
     #endif
@@ -543,10 +599,10 @@ extern "C"
     void TIM1_TRG_COM_TIM11_IRQHandler()
     {
         #ifdef TIM1_BASE
-        clock::Timer1.trigger_com_irq_handler();
+        clock::Tim1.trigger_com_irq_handler();
         #endif
         #ifdef TIM11_BASE
-        clock::Timer11.global_irq_handler();
+        clock::Tim11.global_irq_handler();
         #endif
     }
     #endif
@@ -554,49 +610,49 @@ extern "C"
     #if defined(TIM1_BASE)
     void TIM1_CC_IRQHandler()
     {
-        clock::Timer1.cc_irq_handler();
+        clock::Tim1.cc_irq_handler();
     }
     #endif
 
     #ifdef TIM2_BASE
     void TIM2_IRQHandler()
     {
-        clock::Timer2.global_irq_handler();
+        clock::Tim2.global_irq_handler();
     }
     #endif
 
     #ifdef TIM3_BASE
     void TIM3_IRQHandler()
     {
-        clock::Timer3.global_irq_handler();
+        clock::Tim3.global_irq_handler();
     }
     #endif
 
     #ifdef TIM4_BASE
     void TIM4_IRQHandler()
     {
-        clock::Timer4.global_irq_handler();
+        clock::Tim4.global_irq_handler();
     }
     #endif
     
     #ifdef TIM5_BASE
     void TIM5_IRQHandler()
     {
-        clock::Timer5.global_irq_handler();
+        clock::Tim5.global_irq_handler();
     }
     #endif
 
     #ifdef TIM6_BASE
     void TIM6_DAC_IRQHandler()
     {
-        clock::Timer6.global_irq_handler();
+        clock::Tim6.global_irq_handler();
     }
     #endif
 
     #ifdef TIM7_BASE
     void TIM7_IRQHandler()
     {
-        clock::Timer7.global_irq_handler();
+        clock::Tim7.global_irq_handler();
     }
     #endif
 
@@ -604,10 +660,10 @@ extern "C"
     void TIM8_BRK_TIM12_IRQHandler()
     {
         #ifdef TIM8_BASE
-        clock::Timer8.break_irq_handler();
+        clock::Tim8.break_irq_handler();
         #endif
         #ifdef TIM12_BASE
-        clock::Timer12.global_irq_handler();
+        clock::Tim12.global_irq_handler();
         #endif
     }
     #endif
@@ -616,10 +672,10 @@ extern "C"
     void TIM8_UP_TIM13_IRQHandler()
     {
         #ifdef TIM8_BASE
-        clock::Timer8.on_reload_handler();
+        clock::Tim8.on_reload_handler();
         #endif
         #ifdef TIM13_BASE
-        clock::Timer13.global_irq_handler();
+        clock::Tim13.global_irq_handler();
         #endif
     }
     #endif
@@ -628,10 +684,10 @@ extern "C"
     void TIM8_TRG_COM_TIM14_IRQHandler()
     {
         #ifdef TIM8_BASE
-        clock::Timer8.trigger_com_irq_handler();
+        clock::Tim8.trigger_com_irq_handler();
         #endif
         #ifdef TIM14_BASE
-        clock::Timer14.global_irq_handler();
+        clock::Tim14.global_irq_handler();
         #endif
     }
     #endif
@@ -639,32 +695,33 @@ extern "C"
     #if defined(TIM8_BASE) || defined(TIM8_BASE)
     void TIM8_CC_IRQHandler()
     {
-        clock::Timer8.cc_irq_handler();
+        clock::Tim8.cc_irq_handler();
     }
     #endif
 
     #ifdef TIM15_BASE
     void TIM1_BRK_TIM15_IRQHandler()
     {
-        clock::Timer15.break_irq_handler();
+        clock::Tim15.break_irq_handler();
     }
     #endif
 
     #ifdef TIM16_BASE
     void TIM1_UP_TIM16_IRQHandler()
     {
-        clock::Timer16.on_reload_handler();
+        clock::Tim16.on_reload_handler();
     }
     #endif
 
     #ifdef TIM17_BASE
     void TIM1_TRG_COM_TIM17_IRQHandler()
     {
-        clock::Timer17.trigger_com_irq_handler();
+        clock::Tim17.trigger_com_irq_handler();
     }
     #endif
 }
 
+}
 }
 }
 }

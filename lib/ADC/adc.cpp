@@ -50,6 +50,7 @@ void RegularADC::init() const noexcept
         #endif
         break;
     }
+    reg.CR2 |= 1U;
 }
 
 void RegularADC::deinit() const noexcept
@@ -72,15 +73,16 @@ void RegularADC::deinit() const noexcept
         #endif
         break;
     }
+    reg.CR2 &= ~1U;
 }
 #ifdef ADC1_BASE
-const InjectedADC InjADC1(0, detail::ADC1CommonReg, detail::ADC1Reg);
+const InjectedADC Adc1(0, detail::ADC1CommonReg, detail::ADC1Reg);
 #endif
 #ifdef ADC2_BASE
-const InjectedADC InjADC2(1, detail::ADC2CommonReg, detail::ADC2Reg);
+const InjectedADC Adc2(1, detail::ADC2CommonReg, detail::ADC2Reg);
 #endif
 #ifdef ADC3_BASE
-const InjectedADC InjADC3(2, detail::ADC3CommonReg, detail::ADC3Reg);
+const InjectedADC Adc3(2, detail::ADC3CommonReg, detail::ADC3Reg);
 #endif
 
 extern "C"
@@ -88,13 +90,13 @@ extern "C"
     void ADC_IRQHandler()
     {
         #ifdef ADC1_BASE
-        InjADC1.global_irq_handler();
+        Adc1.global_irq_handler();
         #endif
         #ifdef ADC2_BASE
-        InjADC2.global_irq_handler();
+        Adc2.global_irq_handler();
         #endif
         #ifdef ADC3_BASE
-        InjADC3.global_irq_handler();
+        Adc3.global_irq_handler();
         #endif
     }
 }

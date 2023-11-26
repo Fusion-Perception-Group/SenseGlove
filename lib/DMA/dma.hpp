@@ -125,9 +125,9 @@ public:
             {
                 return static_cast<uint16_t>(this->owner.reg.CR & 1U);
             }
-            void setter(bool value) const override
+            void setter(bool on) const override
             {
-                if (value)
+                if (on)
                     owner.enable();
                 else
                     owner.disable();
@@ -141,9 +141,9 @@ public:
             {
                 return this->owner.reg.NDTR;
             }
-            void setter(uint16_t value) const override
+            void setter(uint16_t on) const override
             {
-                this->owner.reg.NDTR = value;
+                this->owner.reg.NDTR = on;
             }
         };
         BaseDMA & _adc;
@@ -211,9 +211,9 @@ public:
             return static_cast<BurstMode>((reg.CR >> 21) & 0x3);
         }
 
-        void set_double_buffer(bool value) const noexcept
+        void set_double_buffer(bool on) const noexcept
         {
-            if (value)
+            if (on)
                 reg.CR |= (1 << 18);
             else
                 reg.CR &= ~(1 << 18);
@@ -238,11 +238,11 @@ public:
         /**
          * @brief Set the peri inc override, override value is 4 bytes
          * 
-         * @param value 
+         * @param on 
          */
-        void set_peri_inc_override(bool value) const noexcept
+        void set_peri_inc_override(bool on) const noexcept
         {
-            if (value)
+            if (on)
                 reg.CR |= (1 << 15);
             else
                 reg.CR &= ~(1 << 15);
@@ -275,9 +275,9 @@ public:
             return static_cast<UnitSize>((reg.CR >> 11) & 0x3);
         }
 
-        void set_dst_inc(bool value) const noexcept
+        void set_dst_inc(bool on) const noexcept
         {
-            if (value)
+            if (on)
                 reg.CR |= (1 << 10);
             else
                 reg.CR &= ~(1 << 10);
@@ -288,9 +288,9 @@ public:
             return reg.CR & (1 << 10);
         }
 
-        void set_peri_inc(bool value) const noexcept
+        void set_peri_inc(bool on) const noexcept
         {
-            if (value)
+            if (on)
                 reg.CR |= (1 << 9);
             else
                 reg.CR &= ~(1 << 9);
@@ -301,9 +301,9 @@ public:
             return reg.CR & (1 << 9);
         }
 
-        void set_circular_mode(bool value) const noexcept
+        void set_circular_mode(bool on) const noexcept
         {
-            if (value)
+            if (on)
                 reg.CR |= (1 << 8);
             else
                 reg.CR &= ~(1 << 8);
@@ -314,17 +314,17 @@ public:
             return reg.CR & (1 << 8);
         }
 
-        void set_direct_mode(bool value) const noexcept
+        void set_direct_mode(bool on) const noexcept
         {
-            if (value)
-                reg.FCR |= (1 << 2);
-            else
+            if (on)
                 reg.FCR &= ~(1 << 2);
+            else
+                reg.FCR |= (1 << 2);
         }
 
         bool is_direct_mode() const noexcept
         {
-            return reg.FCR & (1 << 2);
+            return !(reg.FCR & (1 << 2));
         }
 
         FIFOStatus get_fifo_status() const noexcept
@@ -356,9 +356,9 @@ public:
             return static_cast<Direction>((reg.CR >> 6) & 0x3);
         }
 
-        void set_use_peri_flow_controller(bool value) const noexcept
+        void set_use_peri_flow_controller(bool on) const noexcept
         {
-            if (value)
+            if (on)
                 reg.CR |= (1 << 5);
             else
                 reg.CR &= ~(1 << 5);
@@ -522,8 +522,8 @@ public:
     void deinit() const noexcept override;
 };
 
-extern const DMA DirectMemAccess1;
-extern const DMA_M2M DirectMemAccess2;
+extern const DMA Dma1;
+extern const DMA_M2M Dma2;
 
 }
 }

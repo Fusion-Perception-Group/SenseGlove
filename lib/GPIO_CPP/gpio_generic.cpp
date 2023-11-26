@@ -13,13 +13,15 @@
 #include "_config.hpp"
 #include "gpio.hpp"
 
-#define PIN_FWD(X) X({\
-    [this]() { return this->_config.X; },\
-    [this](const auto value) {\
-        this->_config.X = value;\
-        this->load(this->_config);\
-        }\
-})
+#define PIN_FWD(TYPE, CLSN, NAME) TYPE Pin::CLSN::getter() const\
+{\
+    return owner._config.NAME;\
+}\
+void Pin::CLSN::setter(const TYPE value) const\
+{\
+    owner._config.NAME = value;\
+    owner.load(owner._config);\
+}
 
 #if !VERMIL_STM32_USE_CMSIS && __VERMIL_STM32_USE_GENERIC
 namespace vermils
@@ -194,15 +196,16 @@ _Port & get_port_by_index(const int index)
 
 /*Pin class methods*/
 
+PIN_FWD(PinConfig::IO, _IO, io)
+PIN_FWD(PinConfig::OutMode, _OutMode, out_mode)
+PIN_FWD(PinConfig::EXTIMode, _EXTIMode, exti_mode)
+PIN_FWD(PinConfig::Trigger, _Trigger, trigger)
+PIN_FWD(PinConfig::Pull, _Pull, pull)
+PIN_FWD(PinConfig::Speed, _Speed, speed)
+PIN_FWD(uint8_t, _Alternate, alternate)
+
 Pin::Pin(hidden::_Port & port, const uint8_t pin, const PinConfig & config):
-    _pin(pin), _mask(1 << pin), _config(config), port(port),
-    PIN_FWD(io),
-    PIN_FWD(out_mode),
-    PIN_FWD(exti_mode),
-    PIN_FWD(trigger),
-    PIN_FWD(pull),
-    PIN_FWD(speed),
-    PIN_FWD(alternate)
+    _pin(pin), _mask(1 << pin), _config(config), port(port)
     
 {
     port.enable_clock();
