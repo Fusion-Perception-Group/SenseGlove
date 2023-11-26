@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <chrono>
 #include "userconfig.hpp"
 #include "nvic.hpp"
 #include "property.hpp"
@@ -12,6 +13,7 @@ namespace stm32
 namespace clock
 {
 using CallbackType = std::function<void()>;
+extern uint32_t &SystemCoreClock;
 namespace detail
 {
     struct Register
@@ -72,56 +74,93 @@ namespace detail
     extern __Register_Type TIM15_Reg;
     extern __Register_Type TIM16_Reg;
     extern __Register_Type TIM17_Reg;
+
+    inline constexpr uint16_t int_sqrt32(uint32_t x)
+    {
+        uint16_t res=0;
+        uint16_t add= 0x8000;   
+        int i;
+        for(i=0;i<16;i++)
+        {
+            uint16_t temp=res | add;
+            uint32_t g2=temp*temp;      
+            if (x>=g2)
+            {
+                res=temp;           
+            }
+            add>>=1;
+        }
+        return res;
+    }
+
+    inline constexpr uint32_t int_sqrt64(uint64_t x)
+    {
+        uint32_t res=0;
+        uint32_t add= 0x80000000;   
+        int i;
+        for(i=0;i<32;i++)
+        {
+            uint32_t temp=res | add;
+            uint64_t g2=temp*temp;      
+            if (x>=g2)
+            {
+                res=temp;           
+            }
+            add>>=1;
+        }
+        return res;
+    }
 }
 
 enum class ClockSource : uint32_t
 {
-    ExternalMode2,  /*!< External clock source mode 2                          */
-    Internal,       /*!< Internal clock source                                 */
-    ITR0,           /*!< External clock source mode 1 (ITR0)                   */
-    ITR1,           /*!< External clock source mode 1 (ITR1)                   */
-    ITR2,           /*!< External clock source mode 1 (ITR2)                   */
-    ITR3,           /*!< External clock source mode 1 (ITR3)                   */
-    TTI1FP1_ED,     /*!< External clock source mode 1 (TTI1FP1 + edge detect.) */
-    TTI1FP1,        /*!< External clock source mode 1 (TTI1FP1)                */
-    TTI2FP2,        /*!< External clock source mode 1 (TTI2FP2)                */
-    ExternalMode1   /*!< External clock source mode 1 (ETRF)                   */
+    ExternalMode2 = 0x2000U,  /*!< External clock source mode 2                          */
+    Internal = 0x1000U,       /*!< Internal clock source                                 */
+    ITR0 = 0x0000U,           /*!< External clock source mode 1 (ITR0)                   */
+    ITR1 = 0x0010U,           /*!< External clock source mode 1 (ITR1)                   */
+    ITR2 = 0x0020U,           /*!< External clock source mode 1 (ITR2)                   */
+    ITR3 = 0x0030U,           /*!< External clock source mode 1 (ITR3)                   */
+    TTI1FP1_ED = 0x0040U,     /*!< External clock source mode 1 (TTI1FP1 + edge detect.) */
+    TTI1FP1 = 0x0050U,        /*!< External clock source mode 1 (TTI1FP1)                */
+    TTI2FP2 = 0x0060U,        /*!< External clock source mode 1 (TTI2FP2)                */
+    ExternalMode1 = 0x0070U,   /*!< External clock source mode 1 (ETRF)                   */
+    None = 0xFFFFU
 };
 
 enum class ClockPolarity : uint32_t
 {
-    Inverted,     /*!< Polarity for ETRx clock sources */
-    NonInverted,  /*!< Polarity for ETRx clock sources */
-    Rising,       /*!< Polarity for TIx clock sources  */
-    Falling,      /*!< Polarity for TIx clock sources  */
-    BothEdge      /*!< Polarity for TIx clock sources  */
+    Inverted = 0x8000U,     /*!< Polarity for ETRx clock sources */
+    NonInverted = 0x0000U,  /*!< Polarity for ETRx clock sources */
+    Rising = 0x0000U,       /*!< Polarity for TIx clock sources  */
+    Falling = 0x0002U,      /*!< Polarity for TIx clock sources  */
+    BothEdge = 0x000AU      /*!< Polarity for TIx clock sources  */
 };
 
 enum class ClockPrescaler : uint32_t
 {
-    Div1 = 0U,  /*!< No prescaler is used */
-    Div2 = 1U,  /*!< Prescaler = 2        */
-    Div4 = 2U,  /*!< Prescaler = 4        */
-    Div8 = 3U   /*!< Prescaler = 8        */
+    Div1 = 0x0U,  /*!< No prescaler is used */
+    Div2 = 0x1U,  /*!< Prescaler = 2        */
+    Div4 = 0x2U,  /*!< Prescaler = 4        */
+    Div8 = 0x3U   /*!< Prescaler = 8        */
 };
 
 enum class CountMode : uint32_t
 {
-    Up,      /*!< Counter used as up-counter   */
-    Down,    /*!< Counter used as down-counter */
-    CenterAligned1,  /*!< Center-aligned mode 1, OC interrupt flag is set when
+    Up = 0x00U,      /*!< Counter used as up-counter   */
+    Down = 0x10U,    /*!< Counter used as down-counter */
+    CenterAligned1 = 0x20U,  /*!< Center-aligned mode 1, OC interrupt flag is set when
                           counter is counting down */
-    CenterAligned2,  /*!< Center-aligned mode 2, OC interrupt flag is set when
+    CenterAligned2 = 0x40U,  /*!< Center-aligned mode 2, OC interrupt flag is set when
                           counter is counting up */
-    CenterAligned3   /*!< Center-aligned mode 3, OC interrupt flag is set when
+    CenterAligned3 = 0x60U   /*!< Center-aligned mode 3, OC interrupt flag is set when
                                     counter is counting up or down */
 };
 
-enum class ClockDivision : uint32_t
+enum class ClockDivision : uint32_t  // used for input sampling clock
 {
-    Div1,  /*!< No division */
-    Div2,  /*!< Division by 2 */
-    Div4   /*!< Division by 4 */
+    Div1 = 0x000U,  /*!< No division */
+    Div2 = 0x100U,  /*!< Division by 2 */
+    Div4 = 0x200U   /*!< Division by 4 */
 };
 
 enum class MasterTriggerMode : uint32_t
@@ -168,6 +207,7 @@ struct ClockSourceConfig
     ClockSource source = ClockSource::Internal;
     ClockPolarity polarity = ClockPolarity::NonInverted;
     ClockPrescaler prescaler = ClockPrescaler::Div1;
+    uint32_t extern_freq = 0U;  // external clock frequency
     uint8_t filter = 0;  // filter for the input clock, consecutive samples must be equal
 };
 
@@ -238,8 +278,18 @@ protected:
             owner.reg.CR1 = value ? (owner.reg.CR1|0x10U) : (owner.reg.CR1&~0x10U);
         }
     };
+    struct _OnePulse : public _Property<bool>
+    {
+        using _Property<bool>::_Property;
+        using _Property<bool>::operator=;
+        bool getter() const override { return owner.reg.CR1 & 0x08U; }
+        void setter(const bool value) const override {
+            owner.reg.CR1 = value ? (owner.reg.CR1|0x08U) : (owner.reg.CR1&~0x08U);
+        }
+    };
 public:
     detail::Register &reg;
+    mutable uint32_t extern_freq = 0U;  // external clock frequency, user has the responsibility to make sure it is correct, 0 for unknown
     volatile uint32_t & counter;
     volatile uint32_t & auto_reload;
     volatile uint32_t & prescaler;
@@ -250,6 +300,7 @@ public:
     _AutoReloadPreload auto_reload_preload{*this};
     _Enabled enabled{*this};
     _Direction direction{*this};
+    _OnePulse one_pulse{*this};
     mutable CallbackType on_reload{};  /* on overflow and underflow */
     mutable CallbackType on_trigger{};  /* on trigger event from ITRx, TI1...etc */
 
@@ -264,6 +315,7 @@ public:
     void set_time_base(const TimeBaseConfig &config) const noexcept;
     void set_clock_source(const ClockSourceConfig &config) const noexcept;
     void set_master(const MasterConfig &config) const noexcept;
+    ClockSourceConfig get_clock_source() const noexcept;
 
     void init() const noexcept;
     void deinit() const noexcept;
@@ -306,6 +358,79 @@ public:
     void set_prescaler(uint16_t value) const noexcept
     {
         prescaler = value;
+    }
+
+    /**
+     * @brief Get the base clock, returns SystemCoreClock if internal clock is used, otherwise returns extern_freq
+     * 
+     * @return uint32_t 
+     */
+    uint32_t get_base_clock() const noexcept
+    {
+        return get_base_clock(get_clock_source());
+    }
+
+    uint32_t get_base_clock(const ClockSourceConfig &cfg) const noexcept
+    {
+        if (cfg.source == ClockSource::Internal)
+            return SystemCoreClock;
+        return extern_freq;
+    }
+
+    uint32_t get_base_ticks_per_sec() const noexcept
+    {
+        return get_base_ticks_per_sec(get_clock_source());
+    }
+
+    uint32_t get_base_ticks_per_sec(const ClockSourceConfig &cfg) const noexcept
+    {
+        switch (cfg.source)
+        {
+            case ClockSource::Internal:
+                return SystemCoreClock;
+            case ClockSource::ExternalMode1:
+            case ClockSource::ExternalMode2:
+                return cfg.extern_freq >> static_cast<uint32_t>(cfg.prescaler);
+            default:
+                return cfg.extern_freq;
+        }
+    }
+
+    void set_period_time(const std::chrono::nanoseconds period) const
+    {
+        const uint64_t ticks_ps = get_base_ticks_per_sec();
+        const uint64_t ticks = static_cast<uint64_t>(period.count()) * ticks_ps / 1000000000UL;
+        set_period_ticks(ticks);
+    }
+
+    void set_period_ticks(const uint64_t ticks) const
+    {
+        if (ticks > static_cast<uint64_t>(MAX_PERIOD)+1)
+        {
+            uint64_t pre_ticks = ticks / (static_cast<uint64_t>(MAX_PERIOD)+1);
+            if (pre_ticks > static_cast<uint64_t>(MAX_PRESCALER)+1)
+                throw std::invalid_argument("ticks too large");
+            set_prescaler(pre_ticks ? (pre_ticks-1) : 0);
+            set_auto_reload(MAX_PERIOD);
+        }
+        else if (ticks)
+        {
+            set_prescaler(0);
+            set_auto_reload(ticks-1);
+        }
+        else
+        {
+            throw std::invalid_argument("ticks too small");
+        }
+    }
+
+    void set_frequency(const uint32_t frequency) const
+    {
+        if (frequency == 0)
+            throw std::invalid_argument("frequency cannot be zero");
+        const uint64_t ticks_ps = get_base_ticks_per_sec();
+        const uint64_t ticks = ticks_ps / frequency;
+        set_period_ticks(ticks);
     }
 
     void enable_irq() const noexcept;
@@ -770,9 +895,13 @@ public:
 class GeneralPurposeTimer_2CH : public BaseGeneralPurposeTimer
 {
 public:
-    using BaseGeneralPurposeTimer::BaseGeneralPurposeTimer;
-    Channel channel1 = Channel(*this, 0);
-    Channel channel2 = Channel(*this, 1);
+    //using BaseGeneralPurposeTimer::BaseGeneralPurposeTimer;
+    constexpr GeneralPurposeTimer_2CH(detail::Register &reg, nvic::IRQn_Type r_irqn,
+        uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
+        : BaseGeneralPurposeTimer(reg, r_irqn, max_peroid, max_prescaler, max_repetition)
+    {}
+    Channel channel1{*this, 0};
+    Channel channel2{*this, 1};
 
     void global_irq_handler() const noexcept
     {
@@ -785,9 +914,13 @@ public:
 class GeneralPurposeTimer : public GeneralPurposeTimer_2CH
 {
 public:
-    using GeneralPurposeTimer_2CH::GeneralPurposeTimer_2CH;
-    Channel channel3 = Channel(*this, 2);
-    Channel channel4 = Channel(*this, 3);
+    //using GeneralPurposeTimer_2CH::GeneralPurposeTimer_2CH;
+    constexpr GeneralPurposeTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
+        uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
+        : GeneralPurposeTimer_2CH(reg, r_irqn, max_peroid, max_prescaler, max_repetition)
+    {}
+    Channel channel3{*this, 2};
+    Channel channel4{*this, 3};
 
     void global_irq_handler() const noexcept
     {
@@ -800,17 +933,17 @@ public:
 class AdvancedTimer : public BaseGeneralPurposeTimer
 {
 public:
-    Channel_N_Break channel1 = Channel_N_Break(*this, 0);
-    Channel_N_Break channel2 = Channel_N_Break(*this, 1);
-    Channel_N_Break channel3 = Channel_N_Break(*this, 2);
-    Channel_Break channel4 = Channel_Break(*this, 3);
+    Channel_N_Break channel1{*this, 0};
+    Channel_N_Break channel2{*this, 1};
+    Channel_N_Break channel3{*this, 2};
+    Channel_Break channel4{*this, 3};
     mutable CallbackType on_break{};
     mutable CallbackType on_communication{};
     const nvic::IRQn_Type break_irqn;
     const nvic::IRQn_Type trigger_com_irqn;  // trigger/comunication interrupt
     const nvic::IRQn_Type capcom_irqn;  // capture/compare interrupt
 
-    AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
+    constexpr AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
         nvic::IRQn_Type brk_iqn, nvic::IRQn_Type tr_com_iqn, nvic::IRQn_Type cc_iqn,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
         : BaseGeneralPurposeTimer(reg, r_irqn, max_peroid, max_prescaler, max_repetition),
@@ -921,15 +1054,6 @@ extern const GeneralPurposeTimer_2CH Timer14;
 extern const GeneralPurposeTimer_2CH Timer15;
 extern const GeneralPurposeTimer_2CH Timer16;
 extern const GeneralPurposeTimer_2CH Timer17;
-
-// void test()
-// {
-//     std::size_t s = sizeof(BasicTimer);
-//     std::size_t s = sizeof(BaseGeneralPurposeTimer);
-//     std::size_t s = sizeof(GeneralPurposeTimer_2CH);
-//     std::size_t s = sizeof(GeneralPurposeTimer);
-//     std::size_t s = sizeof(AdvancedTimer);
-// }
 
 }
 }

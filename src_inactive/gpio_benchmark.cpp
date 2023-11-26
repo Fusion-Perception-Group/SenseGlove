@@ -50,14 +50,14 @@ int main()
     scl.io = PinConfig::Output;
     scl.out_mode = PinConfig::OpenDrain;
 
-    uint32_t start = timer.get_cycles(), test_size=100;
-    
+    uint32_t start = timer.get_cycles(), test_size=1000;
+
     for (unsigned i = 0; i < test_size; ++i)
     {
         scl.set();
-        while(scl.read());
-        scl.reset();
         while(!scl.read());
+        scl.reset();
+        while(scl.read());
     }
     uint32_t end = timer.get_cycles();
     double sec = double(end - start) / stm32::SystemCoreClock;

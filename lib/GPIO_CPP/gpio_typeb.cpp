@@ -361,9 +361,9 @@ Pin::Pin(_Port & port, const uint8_t pin): _pin(pin), _mask(1 << pin), port(port
 
 Pin::Pin(hidden::_Port & port, const uint8_t pin, const PinConfig & config):
         Pin(port, pin)
-    {
-        load(config);
-    }
+{
+    load(config);
+}
 
 /**
  * @brief Enables the clock for the GPIO port

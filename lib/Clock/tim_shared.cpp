@@ -15,7 +15,7 @@ namespace clock
  * @param t 
  * @return TIM_HandleTypeDef& 
  */
-static inline TIM_HandleTypeDef & enable_clock(const BasicTimer & t)
+static inline void enable_clock(const BasicTimer & t)
 {
     const auto ptr = reinterpret_cast<TIM_TypeDef *>(&t.reg);
 
@@ -24,174 +24,104 @@ static inline TIM_HandleTypeDef & enable_clock(const BasicTimer & t)
     else if (ptr == TIM1)
     {
         __HAL_RCC_TIM1_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM1_handle={
-            .Instance = TIM1
-        };
-        return TIM1_handle;
     }
     #endif
     #if defined(TIM2)
     else if (ptr == TIM2)
     {
         __HAL_RCC_TIM2_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM2_handle={
-            .Instance = TIM2
-        };
-        return TIM2_handle;
     }
     #endif
     #if defined(TIM3)
     else if (ptr == TIM3)
     {
         __HAL_RCC_TIM3_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM3_handle={
-            .Instance = TIM3
-        };
-        return TIM3_handle;
     }
     #endif
     #if defined(TIM4)
     else if (ptr == TIM4)
     {
         __HAL_RCC_TIM4_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM4_handle={
-            .Instance = TIM4
-        };
-        return TIM4_handle;
     }
     #endif
     #if defined(TIM5)
     else if (ptr == TIM5)
     {
         __HAL_RCC_TIM5_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM5_handle={
-            .Instance = TIM5
-        };
-        return TIM5_handle;
     }
     #endif
     #if defined(TIM6)
     else if (ptr == TIM6)
     {
         __HAL_RCC_TIM6_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM6_handle={
-            .Instance = TIM6
-        };
-        return TIM6_handle;
     }
     #endif
     #if defined(TIM7)
     else if (ptr == TIM7)
     {
         __HAL_RCC_TIM7_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM7_handle={
-            .Instance = TIM7
-        };
-        return TIM7_handle;
     }
     #endif
     #if defined(TIM8)
     else if (ptr == TIM8)
     {
         __HAL_RCC_TIM8_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM8_handle={
-            .Instance = TIM8
-        };
-        return TIM8_handle;
     }
     #endif
     #if defined(TIM9)
     else if (ptr == TIM9)
     {
         __HAL_RCC_TIM9_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM9_handle={
-            .Instance = TIM9
-        };
-        return TIM9_handle;
     }
     #endif
     #if defined(TIM10)
     else if (ptr == TIM10)
     {
         __HAL_RCC_TIM10_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM10_handle={
-            .Instance = TIM10
-        };
-        return TIM10_handle;
     }
     #endif
     #if defined(TIM11)
     else if (ptr == TIM11)
     {
         __HAL_RCC_TIM11_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM11_handle={
-            .Instance = TIM11
-        };
-        return TIM11_handle;
     }
     #endif
     #if defined(TIM12)
     else if (ptr == TIM12)
     {
         __HAL_RCC_TIM12_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM12_handle={
-            .Instance = TIM12
-        };
-        return TIM12_handle;
     }
     #endif
     #if defined(TIM13)
     else if (ptr == TIM13)
     {
         __HAL_RCC_TIM13_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM13_handle={
-            .Instance = TIM13
-        };
-        return TIM13_handle;
     }
     #endif
     #if defined(TIM14)
     else if (ptr == TIM14)
     {
         __HAL_RCC_TIM14_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM14_handle={
-            .Instance = TIM14
-        };
-        return TIM14_handle;
     }
     #endif
     #if defined(TIM15)
     else if (ptr == TIM15)
     {
         __HAL_RCC_TIM15_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM15_handle={
-            .Instance = TIM15
-        };
-        return TIM15_handle;
     }
     #endif
     #if defined(TIM16)
     else if (ptr == TIM16)
     {
         __HAL_RCC_TIM16_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM16_handle={
-            .Instance = TIM16
-        };
-        return TIM16_handle;
     }
     #endif
     #if defined(TIM17)
     else if (ptr == TIM17)
     {
         __HAL_RCC_TIM17_CLK_ENABLE();
-        static TIM_HandleTypeDef TIM17_handle={
-            .Instance = TIM17
-        };
-        return TIM17_handle;
     }
     #endif
-
-    throw std::invalid_argument("Invalid timer");
 }
 
 static inline void disable_clock(const BasicTimer & t)
@@ -303,152 +233,153 @@ static inline void disable_clock(const BasicTimer & t)
     #endif
 }
 
-static inline TIM_Base_InitTypeDef TimeBaseConfigConv(const TimeBaseConfig &config)
-{
-    TIM_Base_InitTypeDef init;
 
-    switch(config.count_mode)
-    {
-        case CountMode::Up:
-            init.CounterMode = TIM_COUNTERMODE_UP;
-            break;
-        case CountMode::Down:
-            init.CounterMode = TIM_COUNTERMODE_DOWN;
-            break;
-        case CountMode::CenterAligned1:
-            init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
-            break;
-        case CountMode::CenterAligned2:
-            init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED2;
-            break;
-        case CountMode::CenterAligned3:
-            init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED3;
-            break;    
-    }
-
-    switch(config.clock_division)
-    {
-        case ClockDivision::Div1:
-            init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-            break;
-        case ClockDivision::Div2:
-            init.ClockDivision = TIM_CLOCKDIVISION_DIV2;
-            break;
-        case ClockDivision::Div4:
-            init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
-            break;
-    }
-
-    init.Prescaler = config.prescaler;
-    init.Period = config.period;
-    init.RepetitionCounter = config.repetition_counter;
-    init.AutoReloadPreload = config.auto_reload_preload ? TIM_AUTORELOAD_PRELOAD_ENABLE : TIM_AUTORELOAD_PRELOAD_DISABLE;
-
-    return init;
-}
-
-static inline TIM_ClockConfigTypeDef ClockConfigConv(const ClockSourceConfig & config)
-{
-    TIM_ClockConfigTypeDef clock_config;
-
-    switch(config.source)
-    {
-        case ClockSource::Internal:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-            break;
-        case ClockSource::ExternalMode1:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_ETRMODE1;
-            break;
-        case ClockSource::ExternalMode2:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_ETRMODE2;
-            break;
-        case ClockSource::ITR0:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_ITR0;
-            break;
-        case ClockSource::ITR1:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_ITR1;
-            break;
-        case ClockSource::ITR2:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_ITR2;
-            break;
-        case ClockSource::ITR3:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_ITR3;
-            break;
-        case ClockSource::TTI1FP1:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_TI1;
-            break;
-        case ClockSource::TTI1FP1_ED:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_TI1ED;
-            break;
-        case ClockSource::TTI2FP2:
-            clock_config.ClockSource = TIM_CLOCKSOURCE_TI2;
-            break;
-    }
-
-    switch(config.polarity)
-    {
-        case ClockPolarity::NonInverted:
-            clock_config.ClockPolarity = TIM_CLOCKPOLARITY_NONINVERTED;
-            break;
-        case ClockPolarity::Inverted:
-            clock_config.ClockPolarity = TIM_CLOCKPOLARITY_INVERTED;
-            break;
-        case ClockPolarity::Rising:
-            clock_config.ClockPolarity = TIM_CLOCKPOLARITY_RISING;
-            break;
-        case ClockPolarity::Falling:
-            clock_config.ClockPolarity = TIM_CLOCKPOLARITY_FALLING;
-            break;
-        case ClockPolarity::BothEdge:
-            clock_config.ClockPolarity = TIM_CLOCKPOLARITY_BOTHEDGE;
-            break;
-    }
-
-    switch(config.prescaler)
-    {
-        case ClockPrescaler::Div1:
-            clock_config.ClockPrescaler = TIM_CLOCKPRESCALER_DIV1;
-            break;
-        case ClockPrescaler::Div2:
-            clock_config.ClockPrescaler = TIM_CLOCKPRESCALER_DIV2;
-            break;
-        case ClockPrescaler::Div4:
-            clock_config.ClockPrescaler = TIM_CLOCKPRESCALER_DIV4;
-            break;
-        case ClockPrescaler::Div8:
-            clock_config.ClockPrescaler = TIM_CLOCKPRESCALER_DIV8;
-            break;
-    }
-
-    clock_config.ClockFilter = config.filter;
-
-    return clock_config;
-}
 
 void BasicTimer::set_time_base(const TimeBaseConfig &config) const noexcept
 {
-    auto & htim = enable_clock(*this);
+    enable_clock(*this);
+    uint32_t period = std::min<uint32_t>(config.period, MAX_PERIOD);
+    uint32_t prescaler = std::min<uint32_t>(config.prescaler, MAX_PRESCALER);
+    uint32_t repetition = std::min<uint32_t>(config.repetition_counter, 0xFFU);
+    uint32_t tmpcr1 = reg.CR1;
 
-    htim.Init = TimeBaseConfigConv(config);
-    htim.Init.Period = std::min(htim.Init.Period, MAX_PERIOD);
-    htim.Init.RepetitionCounter = std::min(htim.Init.RepetitionCounter, MAX_REP_COUNTER);
+    tmpcr1 &= ~(TIM_CR1_DIR | TIM_CR1_CMS);
+    tmpcr1 |= static_cast<uint32_t>(config.count_mode);
 
-    HAL_TIM_Base_Init(&htim);
+    tmpcr1 &= ~TIM_CR1_CKD;
+    tmpcr1 |= static_cast<uint32_t>(config.clock_division);
+
+    reg.CR1 = tmpcr1;
+
+    auto_reload_preload = config.auto_reload_preload;
+
+    set_auto_reload(period);
+    set_prescaler(prescaler);
+    reg.RCR = repetition;
+
+    reg.EGR = TIM_EGR_UG;  // generate update event
+
+    reg.SR = ~0x1U; // clear update flag
 }
 
 void BasicTimer::set_clock_source(const ClockSourceConfig &config) const noexcept
 {
-    auto & htim = enable_clock(*this);
+    enable_clock(*this);
+    uint32_t tmp = reg.SMCR;
+    tmp &= 0x80U;  // erase all bits except MSM
 
-    auto clock_config = ClockConfigConv(config);
-    clock_config.ClockFilter = std::min<uint8_t>(config.filter, 0xFU);
+    if (config.source == ClockSource::Internal)
+    {
+    }
+    else if (config.source == ClockSource::ExternalMode1 or
+            config.source == ClockSource::ExternalMode2)
+    {
+        tmp |= static_cast<uint32_t>(config.prescaler) << 12;
+        tmp |= static_cast<uint32_t>(config.polarity) & TIM_SMCR_ETP;
+        tmp |= (static_cast<uint32_t>(config.filter) & 0xFU) << 8;
 
-    HAL_TIM_ConfigClockSource(&htim, &clock_config);
+        if (config.source == ClockSource::ExternalMode1)
+            tmp |= (TIM_SLAVEMODE_EXTERNAL1 | TIM_CLOCKSOURCE_ETRMODE1);
+        else
+            tmp |= TIM_SMCR_ECE;
+    }
+    else if (config.source == ClockSource::TTI1FP1 or
+            config.source == ClockSource::TTI1FP1_ED)
+    {
+        reg.CCER = (
+            (reg.CCER & ~(TIM_CCER_CC1P | TIM_CCER_CC1NP | TIM_CCER_CC1E))
+            | (static_cast<uint32_t>(config.polarity) & 0xAU)
+            );
+        reg.CCMR1 &= ~TIM_CCMR1_IC1F;
+        reg.CCMR1 |= (static_cast<uint32_t>(config.filter) & 0xFU) << 4;
+        tmp &= ~TIM_SMCR_TS;
+        tmp |= (static_cast<uint32_t>(config.source) | TIM_SLAVEMODE_EXTERNAL1);
+    }
+    else if (config.source == ClockSource::TTI2FP2)
+    {
+        reg.CCER = (
+            (reg.CCER & ~(TIM_CCER_CC2P | TIM_CCER_CC2NP | TIM_CCER_CC2E))
+            | ((static_cast<uint32_t>(config.polarity) & 0xAU) << 4U)
+            );
+        reg.CCMR1 &= ~TIM_CCMR1_IC2F;
+        reg.CCMR1 |= (static_cast<uint32_t>(config.filter) & 0xFU) << 12;
+        tmp &= ~TIM_SMCR_TS;
+        tmp |= (static_cast<uint32_t>(config.source) | TIM_SLAVEMODE_EXTERNAL1);
+    }
+    else // ITRx
+    {
+        tmp &= ~TIM_SMCR_TS;
+        tmp |= (static_cast<uint32_t>(config.source) | TIM_SLAVEMODE_EXTERNAL1);
+    }
+
+    reg.SMCR = tmp;
+    extern_freq = config.extern_freq;
+}
+
+ClockSourceConfig BasicTimer::get_clock_source() const noexcept
+{
+    ClockSourceConfig config;
+    config.extern_freq = extern_freq;
+
+   uint32_t tmpsmcr = reg.SMCR;
+
+   if (tmpsmcr & TIM_SMCR_ECE)
+    {
+        config.source = ClockSource::ExternalMode2;
+        config.prescaler = static_cast<ClockPrescaler>((tmpsmcr >> 12) & 0x7U);
+        config.polarity = static_cast<ClockPolarity>(tmpsmcr & TIM_SMCR_ETP);
+        config.filter = static_cast<uint8_t>((tmpsmcr >> 8) & 0xFU);
+    }
+    else if (tmpsmcr & TIM_SMCR_TS)
+    {
+        switch (tmpsmcr & TIM_SMCR_TS)
+        {
+            case TIM_TS_ITR0:
+                config.source = ClockSource::ITR0;
+                break;
+            case TIM_TS_ITR1:
+                config.source = ClockSource::ITR1;
+                break;
+            case TIM_TS_ITR2:
+                config.source = ClockSource::ITR2;
+                break;
+            case TIM_TS_ITR3:
+                config.source = ClockSource::ITR3;
+                break;
+            case TIM_TS_TI1F_ED:
+                config.source = ClockSource::TTI1FP1_ED;
+                config.polarity = static_cast<ClockPolarity>(reg.CCER & 0xAU);
+                config.filter = static_cast<uint8_t>((reg.CCMR1 >> 4) & 0xFU);
+                break;
+            case TIM_TS_TI1FP1:
+                config.source = ClockSource::TTI1FP1;
+                config.polarity = static_cast<ClockPolarity>(reg.CCER & 0xAU);
+                config.filter = static_cast<uint8_t>((reg.CCMR1 >> 4) & 0xFU);
+                break;
+            case TIM_TS_TI2FP2:
+                config.source = ClockSource::TTI2FP2;
+                config.polarity = static_cast<ClockPolarity>(reg.CCER & 0xAU);
+                config.filter = static_cast<uint8_t>((reg.CCMR1 >> 12) & 0xFU);
+                break;
+            case TIM_TS_ETRF:
+                config.source = ClockSource::ExternalMode1;
+                config.prescaler = static_cast<ClockPrescaler>((tmpsmcr >> 12) & 0x7U);
+                config.polarity = static_cast<ClockPolarity>(tmpsmcr & TIM_SMCR_ETP);
+                config.filter = static_cast<uint8_t>((tmpsmcr >> 8) & 0xFU);
+                break;
+        }
+    }
+    else
+    {
+        config.source = ClockSource::Internal;
+    }
+
+    return config;
 }
 
 void BasicTimer::set_master(const MasterConfig &config) const noexcept
 {
-    auto & htim = enable_clock(*this);
+    enable_clock(*this);
 
     uint32_t master_output_trigger;
 
@@ -481,7 +412,7 @@ void BasicTimer::set_master(const MasterConfig &config) const noexcept
     }
     reg.CR2 = (reg.CR2 & ~TIM_CR2_MMS) | master_output_trigger;
 
-    if (IS_TIM_SLAVE_INSTANCE(htim.Instance))
+    if (IS_TIM_SLAVE_INSTANCE((TIM_TypeDef *)(&reg)))
         reg.SMCR = (reg.SMCR & ~TIM_SMCR_MSM) | master_output_trigger;
 }
 

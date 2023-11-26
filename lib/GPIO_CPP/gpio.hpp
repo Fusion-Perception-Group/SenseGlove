@@ -224,7 +224,7 @@ class Pin
         void setter(const uint8_t value) const override
         {
             owner._pin = value;
-            owner._mask = 1 << value;
+            owner._mask = 1U << value;
         }
     };
     struct _Mask : _Property<uint32_t>
@@ -362,7 +362,7 @@ public:
      */
     inline bool read() const noexcept
     {
-        return bool(port.IDR & _mask);
+        return static_cast<bool>(port.IDR & _mask);
     }
 
     /**

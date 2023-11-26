@@ -1131,7 +1131,7 @@ namespace vermils
             std::string ret;
             size_t maxsize = ret.max_size();
             size_t opos = 0;             // position of current character in original string
-            uint_fast16_t arg_index = 0; // index of current argument
+            [[maybe_unused]]uint_fast16_t arg_index = 0; // index of current argument
             constexpr uint_fast16_t args_n = sizeof...(args);
             phs.reserve(args_n + 2); // reserve extra 2 for possible escapes
 
@@ -1181,7 +1181,7 @@ namespace vermils
             HolderContainer phs;
             std::string ret;
             size_t opos = 0;             // position of current character in original string
-            uint_fast16_t arg_index = 0; // index of current argument
+            [[maybe_unused]]uint_fast16_t arg_index = 0; // index of current argument
             constexpr uint_fast16_t args_n = sizeof...(args);
             phs.reserve(args_n + 2); // reserve extra 2 for possible escapes
 
