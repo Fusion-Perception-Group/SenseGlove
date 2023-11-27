@@ -2,33 +2,37 @@
 
 #include <string>
 #include <cstdint>
+#include <stdexcept>
 #include "userconfig.hpp"
-#include "gpio.hpp"
 #include "property.hpp"
+#include "clock.hpp"
+#include "nvic.hpp"
+#include "wdg.hpp"
+#include "trace.hpp"
+#include "flash.hpp"
+#include "power.hpp"
+#include "gpio.hpp"
+#include "i2c.hpp"
+#include "spi.hpp"
+#include "usart.hpp"
+#include "adc.hpp"
+#include "dma.hpp"
 
 namespace vermils
 {
 namespace stm32
 {
-class MCU
+namespace mcu
 {
-public:
-    const std::string model = ModelName;
-    std::string name;
+constexpr const std::string_view modelname = ModelName;
 
-    MCU(const std::string &name) : name(name) {}
+/**
+ * @brief init mcu
+ * 
+ * @throw std::runtime_error if init failed
+ */
+void init();
 
-    /**
-     * @brief You don't have to explicitly call this function, it is called by the constructor.
-     * 
-     * @return int 0 if success, otherwise error code
-     */
-    int init()
-    {
-        
-    }
-
-};
-
+}
 }
 }

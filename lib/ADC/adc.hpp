@@ -6,6 +6,7 @@
 #include "nvic.hpp"
 #include "userconfig.hpp"
 #include "block_future.hpp"
+#include "rcc.hpp"
 
 namespace vermils
 {
@@ -99,8 +100,16 @@ public:
     constexpr RegularADC(uint8_t order, detail::_ADCCommonReg &common_reg, detail::_ADCReg &reg) noexcept
         : order(order), common_reg(common_reg), reg(reg) {}
 
-    void init() const noexcept;
-    void deinit() const noexcept;
+    void init() const noexcept
+    {
+        clock::rcc::enable_clock(*this);
+        reg.CR2 |= 1U;
+    }
+    void deinit() const noexcept
+    {
+        clock::rcc::disable_clock(*this);
+        reg.CR2 &= ~1U;
+    }
 
     void start_regular() const noexcept
     {

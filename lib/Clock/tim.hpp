@@ -3,6 +3,7 @@
 #include <functional>
 #include <chrono>
 #include "userconfig.hpp"
+#include "clock_shared.hpp"
 #include "nvic.hpp"
 #include "property.hpp"
 
@@ -15,7 +16,6 @@ namespace clock
 namespace tim
 {
 using CallbackType = std::function<void()>;
-extern uint32_t &SystemCoreClock;
 namespace detail
 {
     struct Register
@@ -523,16 +523,6 @@ public:
                 if (value) owner.enable(); else owner.disable();
             }
         };
-        struct _InversePolarity : public _Property<bool>
-        {
-            using _Property<bool>::_Property;
-            using _Property<bool>::operator=;
-            bool getter() const override { return owner._timer.reg.CCER & (0x2U << (owner.order * 4)); }
-            void setter(const bool value) const override {
-                const uint32_t mask = 0x2U << (owner.order * 4);
-                owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (value ? mask : 0);
-            }
-        };
         struct _OutputPreloadEnabled : public _Property<bool>
         {
             using _Property<bool>::_Property;
@@ -541,87 +531,6 @@ public:
             void setter(const bool value) const override {
                 const uint32_t mask = 1U << ((owner.order%2) * 8 + 3);
                 owner.CCMRx = (owner.CCMRx & ~mask) | (value ? mask : 0);
-            }
-        };
-        struct _PWMFastMode : public _Property<bool>
-        {
-            using _Property<bool>::_Property;
-            using _Property<bool>::operator=;
-            bool getter() const override { return owner.CCMRx & (1U << ((owner.order%2) * 8 + 2)); }
-            void setter(const bool value) const override {
-                const uint32_t mask = 1U << ((owner.order%2) * 8 + 2);
-                owner.CCMRx = (owner.CCMRx & ~mask) | (value ? mask : 0);
-            }
-        };
-        struct _OutputCompareMode : public _Property<OutputCompareMode>
-        {
-            using _Property<OutputCompareMode>::_Property;
-            using _Property<OutputCompareMode>::operator=;
-            OutputCompareMode getter() const override {
-                uint32_t tmp;
-                const bool mod1 = (owner.order % 2);
-                tmp = owner.CCMRx;
-                tmp &= (mod1 ? 0x7300U : 0x73U);
-                tmp >>= (mod1 ? 8U : 0U);
-                return static_cast<OutputCompareMode>(tmp);
-            }
-            void setter(const OutputCompareMode value) const override {
-                uint32_t tmp;
-                const uint32_t shift = (owner.order%2) * 8;
-                tmp = owner.CCMRx;
-                tmp &= ~(0x73U << shift);
-                tmp |= static_cast<uint32_t>(value) << shift;
-                owner.CCMRx = tmp;
-            }
-        };
-        struct _InputFilter : public _Property<uint8_t>
-        {
-            using _Property<uint8_t>::_Property;
-            using _Property<uint8_t>::operator=;
-            uint8_t getter() const override { return (owner.CCMRx >> 4) & 0x0FU; }
-            void setter(const uint8_t value) const override {
-                const unsigned shift = (owner.order%2) * 8 + 4;
-                const uint32_t mask = 0x0FU << shift;
-                owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
-            }
-        };
-        struct _InputPrescaler : public _Property<ClockPrescaler>
-        {
-            using _Property<ClockPrescaler>::_Property;
-            using _Property<ClockPrescaler>::operator=;
-            ClockPrescaler getter() const override {
-                return static_cast<ClockPrescaler>((owner.CCMRx >> 2) & 0x03U);
-            }
-            void setter(const ClockPrescaler value) const override {
-                const unsigned shift = (owner.order%2) * 8 + 2;
-                const uint32_t mask = 0x03U << shift;
-                owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
-            }
-        };
-        struct _InputTrigger : public _Property<EdgeTrigger>
-        {
-            using _Property<EdgeTrigger>::_Property;
-            using _Property<EdgeTrigger>::operator=;
-            EdgeTrigger getter() const override {
-                return static_cast<EdgeTrigger>((owner._timer.reg.CCER >> (owner.order*4)) & 0xAU);
-            }
-            void setter(const EdgeTrigger value) const override {
-                const unsigned shift = owner.order * 4;
-                const uint32_t mask = 0xAU << shift;
-                owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (static_cast<uint32_t>(value) << shift);
-            }
-        };
-        struct _IOSelection : public _Property<IOSelection>
-        {
-            using _Property<IOSelection>::_Property;
-            using _Property<IOSelection>::operator=;
-            IOSelection getter() const override {
-                return static_cast<IOSelection>((owner.CCMRx >> ((owner.order%2)*8)) & 0x03U);
-            }
-            void setter(const IOSelection value) const override {
-                const unsigned shift = (owner.order%2) * 8;
-                const uint32_t mask = 0x03U << shift;
-                owner.CCMRx = (owner.CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
             }
         };
         constexpr volatile uint32_t & _get_ccr(const T& timer, const uint8_t order)
@@ -646,14 +555,7 @@ public:
         mutable CallbackType on_capture{};
         mutable CallbackType on_compare{};
         _Enabled enabled{*this};
-        _InversePolarity inverse_polarity{*this};
         _OutputPreloadEnabled output_preload_enabled{*this};
-        _PWMFastMode pwm_fast_mode{*this};
-        _OutputCompareMode output_mode{*this};
-        _InputFilter input_filter{*this};
-        _InputPrescaler input_prescaler{*this};
-        _InputTrigger input_trigger{*this};
-        _IOSelection io_selection{*this};
 
         constexpr Channel(T &timer, const uint8_t order) : _timer(timer), order(order),
                 CapComRegister(_get_ccr(timer, order)), CCMRx(_get_ccmr(timer, order))
@@ -671,6 +573,88 @@ public:
             _timer.reg.CCER &= ~(1U << (order * 4));
         }
 
+        void set_inverse_polarity(const bool value) const noexcept
+        {
+            const uint32_t mask = 0x2U << (order * 4);
+            _timer.reg.CCER = (_timer.reg.CCER & ~mask) | (value ? mask : 0);
+        }
+
+        bool get_inverse_polarity() const noexcept
+        {
+            return _timer.reg.CCER & (0x2U << (order * 4));
+        }
+
+        void set_fast_mode(const bool value) const noexcept
+        {
+            const uint32_t mask = 1U << ((order%2) * 8 + 2);
+            CCMRx = (CCMRx & ~mask) | (value ? mask : 0);
+        }
+
+        bool get_fast_mode() const noexcept
+        {
+            return CCMRx & (1U << ((order%2) * 8 + 2));
+        }
+
+        void set_output_mode(const OutputCompareMode value) const noexcept
+        {
+            const uint32_t shift = (order%2) * 8;
+            const uint32_t mask = 0x07U << shift;
+            CCMRx = (CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
+        }
+
+        OutputCompareMode get_output_mode() const noexcept
+        {
+            return static_cast<OutputCompareMode>((CCMRx >> ((order%2)*8)) & 0x07U);
+        }
+
+        void set_input_filter(const uint8_t value) const noexcept
+        {
+            const unsigned shift = (order%2) * 8 + 4;
+            const uint32_t mask = 0x0FU << shift;
+            CCMRx = (CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
+        }
+
+        uint8_t get_input_filter() const noexcept
+        {
+            return (CCMRx >> ((order%2)*8+4)) & 0x0FU;
+        }
+
+        void set_input_prescaler(const ClockPrescaler value) const noexcept
+        {
+            const unsigned shift = (order%2) * 8 + 2;
+            const uint32_t mask = 0x03U << shift;
+            CCMRx = (CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
+        }
+
+        ClockPrescaler get_input_prescaler() const noexcept
+        {
+            return static_cast<ClockPrescaler>((CCMRx >> ((order%2)*8+2)) & 0x03U);
+        }
+
+        void set_input_trigger(const EdgeTrigger value) const noexcept
+        {
+            const unsigned shift = order * 4;
+            const uint32_t mask = 0xAU << shift;
+            _timer.reg.CCER = (_timer.reg.CCER & ~mask) | (static_cast<uint32_t>(value) << shift);
+        }
+
+        EdgeTrigger get_input_trigger() const noexcept
+        {
+            return static_cast<EdgeTrigger>((_timer.reg.CCER >> (order*4)) & 0xAU);
+        }
+
+        void set_io_selection(const IOSelection value) const noexcept
+        {
+            const unsigned shift = (order%2) * 8;
+            const uint32_t mask = 0x03U << shift;
+            CCMRx = (CCMRx & ~mask) | (static_cast<uint32_t>(value) << shift);
+        }
+
+        IOSelection get_io_selection() const noexcept
+        {
+            return static_cast<IOSelection>((CCMRx >> ((order%2)*8)) & 0x03U);
+        }
+
         /**
          * @brief 
          * 
@@ -680,23 +664,23 @@ public:
         virtual void load(const CaptureCompareConfig &config)
         {
             disable();
-            io_selection = config.io_selection;
+            set_io_selection(config.io_selection);
             
             if (config.io_selection == IOSelection::Output)
             {
-                output_mode = config.output_mode;
+                set_output_mode(config.output_mode);
                 CapComRegister = config.pulse;
-                inverse_polarity = config.inverse_polarity;
+                set_inverse_polarity(config.inverse_polarity);
                 output_preload_enabled = true;
-                pwm_fast_mode = config.fast_mode;
+                set_fast_mode(config.fast_mode);
             }
             else
             {
                 if (config.input_filter > 15U)
                     throw std::invalid_argument("input filter must be in [0, 15]");
-                input_filter = config.input_filter;
-                input_trigger = config.input_trigger;
-                input_prescaler = config.input_prescaler;
+                set_input_filter(config.input_filter);
+                set_input_trigger(config.input_trigger);
+                set_input_prescaler(config.input_prescaler);
             }
         }
 
@@ -783,80 +767,86 @@ public:
                 owner._timer.reg.BDTR = value ? (owner._timer.reg.BDTR|0x1000U) : (owner._timer.reg.BDTR&~0x1000U);
             }
         };
-        struct _LockLevel : public _Property<LockLevel>
-        {
-            using _Property<LockLevel>::_Property;
-            using _Property<LockLevel>::operator=;
-            LockLevel getter() const override {
-                return static_cast<LockLevel>((owner._timer.reg.BDTR >> 8) & 0x3U);
-            }
-            void setter(const LockLevel value) const override {
-                owner._timer.reg.BDTR = (owner._timer.reg.BDTR & ~0x300U) | (static_cast<uint32_t>(value) << 8);
-            }
-        };
-        struct _IdleState : public _Property<bool>
-        {
-            using _Property<bool>::_Property;
-            using _Property<bool>::operator=;
-            bool getter() const override { return owner._timer.reg.CR2 & (0x100U << (owner.order*2)); }
-            void setter(const bool value) const override {
-                const uint32_t mask = 0x100U << (owner.order*2);
-                owner._timer.reg.CR2 = (owner._timer.reg.CR2 & ~mask) | (value ? mask : 0);
-            }
-        };
-        struct _DeadTime : public _Property<uint32_t>
-        {
-            using _Property<uint32_t>::_Property;
-            using _Property<uint32_t>::operator=;
-            uint32_t getter() const override {
-                uint8_t dtg = owner._timer.reg.BDTR & 0xFFU;
-                if (dtg & 0x80U)
-                {
-                    if (dtg & 0x40U)
-                    {
-                        if (dtg & 0x20U)
-                            return (32 + (dtg & 0x1FU)) * 16;
-                        else
-                            return (32 + (dtg & 0x1FU)) * 8;
-                    }
-                    else
-                    {
-                        return (64 + (dtg & 0x3FU)) * 2;
-                    }
-                }
-                else
-                {
-                    return dtg;
-                }
-            }
-            void setter(const uint32_t value) const override {
-                if (value > 1008U)
-                    owner._timer.reg.BDTR |= 0xFFU;
-                else if (value > 504)
-                    owner._timer.reg.BDTR |= 0xE0U | (value / 16 - 32);
-                else if (value > 254)
-                    owner._timer.reg.BDTR |= 0xC0U | (value / 8 - 32);
-                else if (value > 127)
-                    owner._timer.reg.BDTR |= 0x80U | (value / 2 - 64);
-                else
-                    owner._timer.reg.BDTR |= value;
-            }
-        };
     public:
         constexpr Channel_Break(T &timer, const uint8_t order) : Channel(timer, order) {}
 
         _MainOutputEnabled main_output_enabled{*this};
-        _AutomaticOutputEnabled automatic_output_enabled{*this};
+        _AutomaticOutputEnabled automatic_output_enabled{*this};  // whether to enable main output in the next update event
         _BreakPolarity break_polarity{*this};
         _BreakEnabled break_enabled{*this};
-        _LockLevel lock_level{*this};
-        _IdleState idle_state{*this};
-        _DeadTime dead_time{*this};  // return multiple of clock source period of DT
+
+        void set_lock_level(const LockLevel value) const noexcept
+        {
+            _timer.reg.BDTR = (_timer.reg.BDTR & ~0x300U) | (static_cast<uint32_t>(value) << 8);
+        }
+
+        LockLevel get_lock_level() const noexcept
+        {
+            return static_cast<LockLevel>((_timer.reg.BDTR >> 8) & 0x3U);
+        }
+
+        void set_idle_state(const bool value) const noexcept
+        {
+            const uint32_t mask = 0x100U << (order*2);
+            _timer.reg.CR2 = (_timer.reg.CR2 & ~mask) | (value ? mask : 0);
+        }
+
+        bool get_idle_state() const noexcept
+        {
+            return _timer.reg.CR2 & (0x100U << (order*2));
+        }
+
+        /**
+         * @brief Set the dead time to the closest possible value
+         * 
+         * @param value 
+         */
+        void set_dead_time(const uint32_t value) const noexcept
+        {
+            if (value > 1008U)
+                _timer.reg.BDTR |= 0xFFU;
+            else if (value > 504)
+                _timer.reg.BDTR |= 0xE0U | (value / 16 - 32);
+            else if (value > 254)
+                _timer.reg.BDTR |= 0xC0U | (value / 8 - 32);
+            else if (value > 127)
+                _timer.reg.BDTR |= 0x80U | (value / 2 - 64);
+            else
+                _timer.reg.BDTR |= value;
+        }
+
+        /**
+         * @brief return clock source period count of DT
+         * 
+         * @return uint32_t 
+         */
+        uint32_t get_dead_time() const noexcept
+        {
+            uint8_t dtg = _timer.reg.BDTR & 0xFFU;
+            if (dtg & 0x80U)
+            {
+                if (dtg & 0x40U)
+                {
+                    if (dtg & 0x20U)
+                        return (32 + (dtg & 0x1FU)) * 16;
+                    else
+                        return (32 + (dtg & 0x1FU)) * 8;
+                }
+                else
+                {
+                    return (64 + (dtg & 0x3FU)) * 2;
+                }
+            }
+            else
+            {
+                return dtg;
+            }
+        }
 
         void load(const CaptureCompareConfig &config) override
         {
             Channel::load(config);
-            idle_state = config.idle_state;
+            set_idle_state(config.idle_state);
         }
     };
 
@@ -873,37 +863,36 @@ public:
             using tricks::StaticProperty<T, Channel_N_Break &>::StaticProperty;
             using tricks::StaticProperty<T, Channel_N_Break &>::operator=;
         };
-        struct _IdleNState : public _Property<bool>
-        {
-            using _Property<bool>::_Property;
-            using _Property<bool>::operator=;
-            bool getter() const override { return owner._timer.reg.CR2 & (0x200U << (owner.order*2)); }
-            void setter(const bool value) const override {
-                const uint32_t mask = 0x200U << (owner.order*2);
-                owner._timer.reg.CR2 = (owner._timer.reg.CR2 & ~mask) | (value ? mask : 0);
-            }
-        };
-        struct _InverseNPolarity : public _Property<bool>
-        {
-            using _Property<bool>::_Property;
-            using _Property<bool>::operator=;
-            bool getter() const override { return owner._timer.reg.CCER & (0x8U << (owner.order * 4)); }
-            void setter(const bool value) const override {
-                const uint32_t mask = 0x8U << (owner.order * 4);
-                owner._timer.reg.CCER = (owner._timer.reg.CCER & ~mask) | (value ? mask : 0);
-            }
-        };
     public:
         constexpr Channel_N_Break(T &timer, const uint8_t order) : Channel_Break(timer, order) {}
 
-        _IdleNState idle_n_state{*this};
-        _InverseNPolarity inverse_n_polarity{*this};
+        void set_inverse_n_polarity(const bool value) const noexcept
+        {
+            const uint32_t mask = 0x8U << (order * 4);
+            _timer.reg.CCER = (_timer.reg.CCER & ~mask) | (value ? mask : 0);
+        }
+
+        bool get_inverse_n_polarity() const noexcept
+        {
+            return _timer.reg.CCER & (0x8U << (order * 4));
+        }
+
+        void set_idle_n_state(const bool value) const noexcept
+        {
+            const uint32_t mask = 0x200U << (order*2);
+            _timer.reg.CR2 = (_timer.reg.CR2 & ~mask) | (value ? mask : 0);
+        }
+
+        bool get_idle_n_state() const noexcept
+        {
+            return _timer.reg.CR2 & (0x200U << (order*2));
+        }
 
         void load(const CaptureCompareConfig &config) override
         {
             Channel_Break::load(config);
-            idle_n_state = config.idle_n_state;
-            inverse_n_polarity = config.inverse_n_polarity;
+            set_idle_n_state(config.idle_n_state);
+            set_inverse_n_polarity(config.inverse_n_polarity);
         }
     };
 };

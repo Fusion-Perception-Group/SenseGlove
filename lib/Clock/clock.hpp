@@ -1,15 +1,18 @@
 #pragma once
 
 #include <cstdint>
+#include "clock_shared.hpp"
+#include "rcc.hpp"
 #include "tim.hpp"
+
 namespace vermils
 {
 namespace stm32
 {
 namespace clock
 {
-    extern uint32_t & SystemCoreClock;
+    using rcc::enable_clock;
+    using rcc::disable_clock;
 }
-using clock::SystemCoreClock;
 }
 }

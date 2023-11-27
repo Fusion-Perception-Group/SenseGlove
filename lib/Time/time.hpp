@@ -27,8 +27,10 @@ namespace time
          * 
          * @param duration
          */
-        virtual void delay(const std::chrono::nanoseconds d) const = 0;
+        virtual void delay(const uint64_t) const noexcept = 0;
+        virtual uint64_t now() const noexcept = 0;
     };
+
     class DWTTimer
     {
         dwt::DataWatchpointTrigger dwt = {};
@@ -48,9 +50,14 @@ namespace time
             return bool(dwt.CYCCNT - start);
         }
 
-        inline void delay(const std::chrono::nanoseconds &ns) const
+        inline void delay(const std::chrono::nanoseconds &ns) const noexcept
         {
             delay_ns(ns.count());
+        }
+
+        inline uint64_t now() const noexcept
+        {
+            return get_ns();
         }
 
         inline void delay_ms(const uint32_t ms) const

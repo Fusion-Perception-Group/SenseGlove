@@ -35,28 +35,8 @@ namespace detail
     #endif
 }
 
-void DMA::init() const noexcept
-{
-    __HAL_RCC_DMA1_CLK_ENABLE();
-}
-
-void DMA::deinit() const noexcept
-{
-    __HAL_RCC_DMA1_CLK_DISABLE();
-}
-
-void DMA_M2M::init() const noexcept
-{
-    __HAL_RCC_DMA2_CLK_ENABLE();
-}
-
-void DMA_M2M::deinit() const noexcept
-{
-    __HAL_RCC_DMA2_CLK_DISABLE();
-}
-
-const DMA Dma1(detail::DMA1Reg);
-const DMA_M2M Dma2(detail::DMA2Reg);
+const DMA Dma1(0, detail::DMA1Reg);
+const DMA_M2M Dma2(1, detail::DMA2Reg);
 
 extern "C"
 {

@@ -30,51 +30,6 @@ namespace detail
     #endif
 }
 
-void RegularADC::init() const noexcept
-{
-    switch (order)
-    {
-    case 0:
-        #ifdef __HAL_RCC_ADC1_CLK_ENABLE
-        __HAL_RCC_ADC1_CLK_ENABLE();
-        #endif
-        break;
-    case 1:
-        #ifdef __HAL_RCC_ADC2_CLK_ENABLE
-        __HAL_RCC_ADC2_CLK_ENABLE();
-        #endif
-        break;
-    case 2:
-        #ifdef __HAL_RCC_ADC3_CLK_ENABLE
-        __HAL_RCC_ADC3_CLK_ENABLE();
-        #endif
-        break;
-    }
-    reg.CR2 |= 1U;
-}
-
-void RegularADC::deinit() const noexcept
-{
-    switch (order)
-    {
-    case 0:
-        #ifdef __HAL_RCC_ADC1_CLK_DISABLE
-        __HAL_RCC_ADC1_CLK_DISABLE();
-        #endif
-        break;
-    case 1:
-        #ifdef __HAL_RCC_ADC2_CLK_DISABLE
-        __HAL_RCC_ADC2_CLK_DISABLE();
-        #endif
-        break;
-    case 2:
-        #ifdef __HAL_RCC_ADC3_CLK_DISABLE
-        __HAL_RCC_ADC3_CLK_DISABLE();
-        #endif
-        break;
-    }
-    reg.CR2 &= ~1U;
-}
 #ifdef ADC1_BASE
 const InjectedADC Adc1(0, detail::ADC1CommonReg, detail::ADC1Reg);
 #endif

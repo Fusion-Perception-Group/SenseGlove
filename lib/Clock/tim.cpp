@@ -1,5 +1,6 @@
 #include "tim.hpp"
 #include "_config.hpp"
+#include "rcc.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -11,6 +12,8 @@ namespace clock
 {
 namespace tim
 {
+    using clock::rcc::enable_clock;
+    using clock::rcc::disable_clock;
     namespace detail
     {
         #if defined(TIM1_BASE)
@@ -65,231 +68,6 @@ namespace tim
         Register & TIM17_Reg = *reinterpret_cast<Register *>(TIM17_BASE);
         #endif
     }
-/**
- * @brief enable clock and return handle
- * 
- * @param t 
- * @return TIM_HandleTypeDef& 
- */
-static inline void enable_clock(const BasicTimer & t)
-{
-    const auto ptr = reinterpret_cast<TIM_TypeDef *>(&t.reg);
-
-    if (false) {}
-    #if defined(TIM1)
-    else if (ptr == TIM1)
-    {
-        __HAL_RCC_TIM1_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM2)
-    else if (ptr == TIM2)
-    {
-        __HAL_RCC_TIM2_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM3)
-    else if (ptr == TIM3)
-    {
-        __HAL_RCC_TIM3_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM4)
-    else if (ptr == TIM4)
-    {
-        __HAL_RCC_TIM4_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM5)
-    else if (ptr == TIM5)
-    {
-        __HAL_RCC_TIM5_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM6)
-    else if (ptr == TIM6)
-    {
-        __HAL_RCC_TIM6_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM7)
-    else if (ptr == TIM7)
-    {
-        __HAL_RCC_TIM7_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM8)
-    else if (ptr == TIM8)
-    {
-        __HAL_RCC_TIM8_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM9)
-    else if (ptr == TIM9)
-    {
-        __HAL_RCC_TIM9_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM10)
-    else if (ptr == TIM10)
-    {
-        __HAL_RCC_TIM10_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM11)
-    else if (ptr == TIM11)
-    {
-        __HAL_RCC_TIM11_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM12)
-    else if (ptr == TIM12)
-    {
-        __HAL_RCC_TIM12_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM13)
-    else if (ptr == TIM13)
-    {
-        __HAL_RCC_TIM13_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM14)
-    else if (ptr == TIM14)
-    {
-        __HAL_RCC_TIM14_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM15)
-    else if (ptr == TIM15)
-    {
-        __HAL_RCC_TIM15_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM16)
-    else if (ptr == TIM16)
-    {
-        __HAL_RCC_TIM16_CLK_ENABLE();
-    }
-    #endif
-    #if defined(TIM17)
-    else if (ptr == TIM17)
-    {
-        __HAL_RCC_TIM17_CLK_ENABLE();
-    }
-    #endif
-}
-
-static inline void disable_clock(const BasicTimer & t)
-{
-    const auto ptr = reinterpret_cast<TIM_TypeDef *>(&t.reg);
-
-    if (false) {}
-    #if defined(TIM1)
-    else if (ptr == TIM1)
-    {
-        __HAL_RCC_TIM1_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM2)
-    else if (ptr == TIM2)
-    {
-        __HAL_RCC_TIM2_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM3)
-    else if (ptr == TIM3)
-    {
-        __HAL_RCC_TIM3_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM4)
-    else if (ptr == TIM4)
-    {
-        __HAL_RCC_TIM4_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM5)
-    else if (ptr == TIM5)
-    {
-        __HAL_RCC_TIM5_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM6)
-    else if (ptr == TIM6)
-    {
-        __HAL_RCC_TIM6_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM7)
-    else if (ptr == TIM7)
-    {
-        __HAL_RCC_TIM7_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM8)
-    else if (ptr == TIM8)
-    {
-        __HAL_RCC_TIM8_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM9)
-    else if (ptr == TIM9)
-    {
-        __HAL_RCC_TIM9_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM10)
-    else if (ptr == TIM10)
-    {
-        __HAL_RCC_TIM10_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM11)
-    else if (ptr == TIM11)
-    {
-        __HAL_RCC_TIM11_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM12)
-    else if (ptr == TIM12)
-    {
-        __HAL_RCC_TIM12_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM13)
-    else if (ptr == TIM13)
-    {
-        __HAL_RCC_TIM13_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM14)
-    else if (ptr == TIM14)
-    {
-        __HAL_RCC_TIM14_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM15)
-    else if
-    {
-        __HAL_RCC_TIM15_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM16)
-    else if (ptr == TIM16)
-    {
-        __HAL_RCC_TIM16_CLK_DISABLE();
-    }
-    #endif
-    #if defined(TIM17)
-    else if (ptr == TIM17)
-    {
-        __HAL_RCC_TIM17_CLK_DISABLE();
-    }
-    #endif
-}
-
-
 
 void BasicTimer::set_time_base(const TimeBaseConfig &config) const noexcept
 {
@@ -498,6 +276,8 @@ void BasicTimer::disable_irq() const noexcept
     nvic::disable_irq(reload_irqn);
     reg.DIER &= ~TIM_IT_UPDATE; // disable interrupt
 }
+
+#define READONLY __attribute__((section(".rodata")))
 
 #ifdef TIM1_BASE
 const AdvancedTimer Tim1(detail::TIM1_Reg, nvic::TIM1_UP_TIM10_IRQn,

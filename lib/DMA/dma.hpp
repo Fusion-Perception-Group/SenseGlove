@@ -8,6 +8,7 @@
 #include "property.hpp"
 #include "userconfig.hpp"
 #include "nvic.hpp"
+#include "rcc.hpp"
 namespace vermils
 {
 namespace stm32
@@ -22,9 +23,9 @@ namespace detail
     {
         volatile uint32_t CR;     /*!< DMA stream x configuration register      */
         volatile uint32_t NDTR;   /*!< DMA stream x number of data register     */
-        volatile uint8_t * PAR;    /*!< DMA stream x peripheral address register */
-        volatile uint8_t * M0AR;   /*!< DMA stream x memory 0 address register   */
-        volatile uint8_t * M1AR;   /*!< DMA stream x memory 1 address register   */
+        volatile void * PAR;    /*!< DMA stream x peripheral address register */
+        volatile void * M0AR;   /*!< DMA stream x memory 0 address register   */
+        volatile void * M1AR;   /*!< DMA stream x memory 1 address register   */
         volatile uint32_t FCR;    /*!< DMA stream x FIFO control register       */
     };
 
@@ -107,6 +108,7 @@ enum class FIFOThreshold
 class BaseDMA
 {
 public:
+    const uint8_t order;
     detail::_DMAReg & reg;
     class Stream
     {
@@ -146,7 +148,7 @@ public:
                 this->owner.reg.NDTR = on;
             }
         };
-        BaseDMA & _adc;
+        BaseDMA & _dma;
     public:
         const uint8_t order;
         detail::_DMAStreamReg & reg;
@@ -156,13 +158,13 @@ public:
         mutable CallbackType on_direct_mode_error;
         mutable CallbackType on_transfer_error;
         mutable CallbackType on_fifo_error;
-        volatile uint8_t * & dst0_addr = reg.M0AR; // M0AR is the default destination address in memory
-        volatile uint8_t * & dst1_addr = reg.M1AR; // M1AR is the alternate destination address in memory (used in double buffer mode)
-        volatile uint8_t * & peri_addr = reg.PAR; // PAR is the default source address in peripheral
+        volatile void * & dst0_addr = reg.M0AR; // M0AR is the default destination address in memory
+        volatile void * & dst1_addr = reg.M1AR; // M1AR is the alternate destination address in memory (used in double buffer mode)
+        volatile void * & peri_addr = reg.PAR; // PAR is the default source address in peripheral
         _Enabled enabled{*this};
         _Count count{*this};
 
-        constexpr Stream(BaseDMA & adc, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : _adc(adc), order(order), reg(reg), irqn(irqn) {}
+        constexpr Stream(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : _dma(dma), order(order), reg(reg), irqn(irqn) {}
         virtual ~Stream() = default;
         Stream & operator=(const Stream &) = delete;
 
@@ -369,7 +371,7 @@ public:
             return reg.CR & (1 << 5);
         }
 
-        volatile uint8_t * current_dst() const  // return the current destination address in double buffer mode
+        volatile void * current_dst() const  // return the current destination address in double buffer mode
         {
             return reg.CR & (1 << 19) ? reg.M1AR : reg.M0AR;
         }
@@ -392,7 +394,7 @@ public:
         void disable_irq() const noexcept { nvic::disable_irq(irqn); }
 
         void on_fifo_err_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
-        {
+        try{
             const uint32_t mask = 0x1U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
@@ -401,8 +403,9 @@ public:
                     on_fifo_error();
             }
         }
+        catch(...) {}
         void on_direct_mode_err_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
-        {
+        try{
             const uint32_t mask = 0x4U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
@@ -411,8 +414,9 @@ public:
                     on_direct_mode_error();
             }
         }
+        catch(...) {}
         void on_transfer_err_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
-        {
+        try{
             const uint32_t mask = 0x8U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
@@ -421,8 +425,9 @@ public:
                     on_transfer_error();
             }
         }
+        catch(...) {}
         void on_half_complete_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
-        {
+        try{
             const uint32_t mask = 0x10U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
@@ -431,8 +436,9 @@ public:
                     on_half_complete();
             }
         }
+        catch(...) {}
         void on_complete_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
-        {
+        try{
             const uint32_t mask = 0x20U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
@@ -441,20 +447,21 @@ public:
                     on_complete();
             }
         }
+        catch(...) {}
 
         void global_irq_handler() const noexcept
-        try{
+        {
             volatile uint32_t * ifcr;
             volatile uint32_t * ifsr;
             if (order < 4)
             {
-                ifcr = &_adc.reg.LIFCR;
-                ifsr = &_adc.reg.LISR;
+                ifcr = &_dma.reg.LIFCR;
+                ifsr = &_dma.reg.LISR;
             }
             else
             {
-                ifcr = &_adc.reg.HIFCR;
-                ifsr = &_adc.reg.HISR;
+                ifcr = &_dma.reg.HIFCR;
+                ifsr = &_dma.reg.HISR;
             }
 
             on_complete_handler(ifcr, ifsr);
@@ -463,16 +470,13 @@ public:
             on_transfer_err_handler(ifcr, ifsr);
             on_half_complete_handler(ifcr, ifsr);
         }
-        catch (...)
-        {
-        }
     };
 
     class StreamM2M : public Stream
     {
     public:
 
-        constexpr StreamM2M(BaseDMA & adc, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : Stream(adc, order, reg, irqn) {}
+        constexpr StreamM2M(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : Stream(dma, order, reg, irqn) {}
 
         void set_direction(Direction direction) const override
         {
@@ -481,9 +485,14 @@ public:
         }
     };
 
-    BaseDMA(detail::_DMAReg & reg) : reg(reg) {}
-    virtual void init() const noexcept = 0;
-    virtual void deinit() const noexcept = 0;
+    BaseDMA(const uint8_t order, detail::_DMAReg & reg) : order(order), reg(reg) {}
+    void init() const noexcept
+    {
+        clock::rcc::enable_clock(*this);
+    }
+    void deinit() const noexcept{
+        clock::rcc::disable_clock(*this);
+    }
 };
 
 class DMA : public BaseDMA
@@ -500,8 +509,6 @@ public:
         Stream(*this, 6, detail::DMA1Stream6Reg, nvic::IRQn_Type::DMA1_Stream6_IRQn),
         Stream(*this, 7, detail::DMA1Stream7Reg, nvic::IRQn_Type::DMA1_Stream7_IRQn)
     };
-    void init() const noexcept override;
-    void deinit() const noexcept override;
 };
 
 class DMA_M2M : public BaseDMA
@@ -518,8 +525,6 @@ public:
         StreamM2M(*this, 6, detail::DMA2Stream6Reg, nvic::IRQn_Type::DMA2_Stream6_IRQn),
         StreamM2M(*this, 7, detail::DMA2Stream7Reg, nvic::IRQn_Type::DMA2_Stream7_IRQn)
     };
-    void init() const noexcept override;
-    void deinit() const noexcept override;
 };
 
 extern const DMA Dma1;
