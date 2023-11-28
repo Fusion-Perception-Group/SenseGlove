@@ -314,7 +314,7 @@ public:
     mutable CallbackType on_reload{};  /* on overflow and underflow */
     mutable CallbackType on_trigger{};  /* on trigger event from ITRx, TI1...etc */
 
-    constexpr BasicTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
+    BasicTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
         : reg(reg), counter(reg.CNT), auto_reload(reg.ARR), prescaler(reg.PSC), reload_irqn(r_irqn),
           MAX_PERIOD(max_peroid), MAX_PRESCALER(max_prescaler), MAX_REP_COUNTER(max_repetition)
@@ -557,7 +557,7 @@ public:
         _Enabled enabled{*this};
         _OutputPreloadEnabled output_preload_enabled{*this};
 
-        constexpr Channel(T &timer, const uint8_t order) : _timer(timer), order(order),
+        Channel(T &timer, const uint8_t order) : _timer(timer), order(order),
                 CapComRegister(_get_ccr(timer, order)), CCMRx(_get_ccmr(timer, order))
         {}
         virtual ~Channel() = default;
@@ -768,7 +768,7 @@ public:
             }
         };
     public:
-        constexpr Channel_Break(T &timer, const uint8_t order) : Channel(timer, order) {}
+        Channel_Break(T &timer, const uint8_t order) : Channel(timer, order) {}
 
         _MainOutputEnabled main_output_enabled{*this};
         _AutomaticOutputEnabled automatic_output_enabled{*this};  // whether to enable main output in the next update event
@@ -864,7 +864,7 @@ public:
             using tricks::StaticProperty<T, Channel_N_Break &>::operator=;
         };
     public:
-        constexpr Channel_N_Break(T &timer, const uint8_t order) : Channel_Break(timer, order) {}
+        Channel_N_Break(T &timer, const uint8_t order) : Channel_Break(timer, order) {}
 
         void set_inverse_n_polarity(const bool value) const noexcept
         {
@@ -901,7 +901,7 @@ class GeneralPurposeTimer_2CH : public BaseGeneralPurposeTimer
 {
 public:
     //using BaseGeneralPurposeTimer::BaseGeneralPurposeTimer;
-    constexpr GeneralPurposeTimer_2CH(detail::Register &reg, nvic::IRQn_Type r_irqn,
+    GeneralPurposeTimer_2CH(detail::Register &reg, nvic::IRQn_Type r_irqn,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
         : BaseGeneralPurposeTimer(reg, r_irqn, max_peroid, max_prescaler, max_repetition)
     {}
@@ -920,7 +920,7 @@ class GeneralPurposeTimer : public GeneralPurposeTimer_2CH
 {
 public:
     //using GeneralPurposeTimer_2CH::GeneralPurposeTimer_2CH;
-    constexpr GeneralPurposeTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
+    GeneralPurposeTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
         : GeneralPurposeTimer_2CH(reg, r_irqn, max_peroid, max_prescaler, max_repetition)
     {}
@@ -948,7 +948,7 @@ public:
     const nvic::IRQn_Type trigger_com_irqn;  // trigger/comunication interrupt
     const nvic::IRQn_Type capcom_irqn;  // capture/compare interrupt
 
-    constexpr AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
+    AdvancedTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
         nvic::IRQn_Type brk_iqn, nvic::IRQn_Type tr_com_iqn, nvic::IRQn_Type cc_iqn,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
         : BaseGeneralPurposeTimer(reg, r_irqn, max_peroid, max_prescaler, max_repetition),

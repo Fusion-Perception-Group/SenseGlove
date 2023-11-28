@@ -32,8 +32,8 @@ struct StaticProperty : StaticReadOnlyProperty<T, O>
 {
 public:
     constexpr StaticProperty(O &&owner) : StaticReadOnlyProperty<T, O>(std::forward<O>(owner)) {}
-    virtual void setter(const T value) const {};
-    T operator=(const T value) const
+    virtual void setter(T value) const {};
+    T operator=(T value) const
     {
         setter(value);
         return value;
@@ -64,10 +64,10 @@ struct StaticProperty<T &, O> : StaticReadOnlyProperty<T &, O>
 {
 public:
     constexpr StaticProperty(O &&owner) : StaticReadOnlyProperty<T &, O>(std::forward<O>(owner)) {}
-    virtual void setter(const T &value) const {};
-    T &operator=(const T &value) const
+    virtual void setter(T &&value) const {};
+    T &operator=(T &&value) const
     {
-        setter(value);
+        setter(std::forward<T>(value));
         return value;
     }
 };
@@ -119,10 +119,10 @@ class Property<T &>
 {
 protected:
     const std::function<T()> getter;
-    const std::function<void(const T &)> setter;
+    const std::function<void(T &&)> setter;
 
 public:
-    Property(std::function<T()> getter, std::function<void(const T &)> setter = nullptr)
+    Property(std::function<T()> getter, std::function<void(T &&)> setter = nullptr)
         : getter(getter), setter(setter)
     {
     }
@@ -137,12 +137,20 @@ public:
         return getter();
     }
 
-    const T &operator=(const T &value)
+    T &operator=(const T &value)
     {
         if (!setter)
             throw std::runtime_error("Property setter is not defined");
         setter(value);
         return value;
+    }
+
+    T &operator=(T &&value)
+    {
+        if (!setter)
+            throw std::runtime_error("Property setter is not defined");
+        setter(std::forward<T>(value));
+        return getter();
     }
 };
 

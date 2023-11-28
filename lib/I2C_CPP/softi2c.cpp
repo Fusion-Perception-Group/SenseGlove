@@ -76,7 +76,7 @@ namespace i2c
         }
     };
 
-    bool SoftMaster::select(I2CAddrType address, const bool read) const
+    bool SoftMaster::select(addr_t address, const bool read) const noexcept
     {
         if (start_byte)
         {
@@ -206,29 +206,27 @@ namespace i2c
      * @param address 
      * @param data 
      * @param size 
-     * @return `bool`
-     * @throw `ArbitrationLost`
+     * @return size of data written
+     * @throw `NoSlaveAck` if address is not acknowledged
      */
-    bool SoftMaster::write(I2CAddrType address, const uint8_t *data, const std::size_t size) const
+    size_t SoftMaster::write(addr_t address, const uint8_t *data, const std::size_t size) const
     {
         if (!select(address, false))
-            return false;
-
+            throw NoSlaveAck();
+        size_t i = 0;
         try
         {
-            for (uint_fast8_t i = 0; i < size; ++i)
+            for (; i < size; ++i)
             {
                 if (!write_byte(data[i]))
-                    return false;
+                    return i;
                 raise_if_arbitration_lost(false);
             }
         }
         catch (const ArbitrationLost &e)
-        {
-            return false;
-        }
+        {}
         end();
-        return true;
+        return i;
     }
 
     /**
@@ -237,15 +235,15 @@ namespace i2c
      * @param address 
      * @param data 
      * @param maxsize 
-     * @return `std::size_t`
-     * @throw `ArbitrationLost`
+     * @return `std::size_t` number of bytes read
+     * @throw `NoSlaveAck` if address is not acknowledged
      */
-    std::size_t SoftMaster::read(I2CAddrType address, uint8_t *data, const std::size_t maxsize) const
+    std::size_t SoftMaster::read(addr_t address, uint8_t *data, const std::size_t maxsize) const
     {
         std::size_t size = 0;
 
         if (!select(address, true))
-            return 0;
+            throw NoSlaveAck();
         
         try
         {

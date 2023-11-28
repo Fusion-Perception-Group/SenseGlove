@@ -12,8 +12,8 @@ namespace mcu
 
 weak void init()
 {
-    if(HAL_Init())
-        throw std::runtime_error("HAL init failed");
+    flash::enable_prefetch();
+    nvic::set_priority_group(nvic::Pre2_Sub2);
 }
 
 }

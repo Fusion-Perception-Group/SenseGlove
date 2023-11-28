@@ -101,6 +101,7 @@ namespace ssd1306
      * 
      * @param `i2c::BaseMaster`
      * @param `init` whether to initialize the display after instantiation
+     * @throw `I2CException` if I2C communication fails
      */
     class I2CDisplay : public BaseDisplay
     {

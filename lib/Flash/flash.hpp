@@ -106,7 +106,7 @@ public:
     template <typename T>
     void write(addr_t addr, std::span<T> data)
     {
-        write(addr, data.data(), data.size()*sizeof(T));
+        write(addr, data.data(), data.size_bytes());
     }
     template <typename T>
     void put(addr_t addr, const T & item)
@@ -116,7 +116,7 @@ public:
     template <typename T>
     void read(addr_t addr, std::span<T> data) const
     {
-        read(addr, data.data(), data.size()*sizeof(T));
+        read(addr, data.data(), data.size_bytes());
     }
     template <typename T>
     T get(addr_t addr) const requires(std::is_trivially_copyable_v<T>)

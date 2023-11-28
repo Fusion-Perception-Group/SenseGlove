@@ -79,6 +79,8 @@ namespace ssd1306
             if (!wrap)
                 return false;
             _newline();
+            if (!display.set_cursor(_page, _col))
+                return false;
         }
         
         if (c == '\n' || c == '\r')

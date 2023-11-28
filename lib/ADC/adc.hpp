@@ -97,7 +97,7 @@ public:
     mutable CallbackType on_watchdog;
     mutable CallbackType on_overrun;
 
-    constexpr RegularADC(uint8_t order, detail::_ADCCommonReg &common_reg, detail::_ADCReg &reg) noexcept
+    RegularADC(uint8_t order, detail::_ADCCommonReg &common_reg, detail::_ADCReg &reg) noexcept
         : order(order), common_reg(common_reg), reg(reg) {}
 
     void init() const noexcept
@@ -482,7 +482,7 @@ class InjectedADC : public RegularADC
 {
 public:
     mutable CallbackType on_injected_done;
-    constexpr InjectedADC(uint8_t order, detail::_ADCCommonReg &common_reg, detail::_ADCReg &reg) noexcept
+    InjectedADC(uint8_t order, detail::_ADCCommonReg &common_reg, detail::_ADCReg &reg) noexcept
         : RegularADC(order, common_reg, reg) {}
     
     void start_injected() const noexcept

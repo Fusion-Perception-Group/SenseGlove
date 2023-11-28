@@ -5,6 +5,7 @@
 #include "adc.hpp"
 #include "dma.hpp"
 #include "tim.hpp"
+#include "usart.hpp"
 
 #define weak __attribute__((weak))
 
@@ -16,6 +17,15 @@ namespace clock
 {
 namespace rcc
 {
+
+uint32_t get_pclk1() noexcept
+{
+    return HAL_RCC_GetPCLK1Freq();
+}
+uint32_t get_pclk2() noexcept
+{
+    return HAL_RCC_GetPCLK2Freq();
+}
 
 weak [[noreturn]] void reset_system() noexcept
 {
@@ -179,6 +189,44 @@ weak void enable_clock(const tim::BasicTimer& tim) noexcept
     }
     #endif
 }
+weak void enable_clock(const usart::HardUsart& usart) noexcept
+{
+    switch (usart.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_USART1_CLK_ENABLE
+        __HAL_RCC_USART1_CLK_ENABLE();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_USART2_CLK_ENABLE
+        __HAL_RCC_USART2_CLK_ENABLE();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_USART3_CLK_ENABLE
+        __HAL_RCC_USART3_CLK_ENABLE();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_UART4_CLK_ENABLE
+        __HAL_RCC_UART4_CLK_ENABLE();
+        #endif
+        break;
+    case 4:
+        #ifdef __HAL_RCC_UART5_CLK_ENABLE
+        __HAL_RCC_UART5_CLK_ENABLE();
+        #endif
+        break;
+    case 5:
+        #ifdef __HAL_RCC_USART6_CLK_ENABLE
+        __HAL_RCC_USART6_CLK_ENABLE();
+        #endif
+        break;
+    }
+}
+
+
 weak void disable_clock(const gpio::hidden::_Port& port) noexcept
 {
     port.disable_clock();
@@ -328,8 +376,46 @@ weak void disable_clock(const tim::BasicTimer& tim) noexcept
     }
     #endif
 }
+weak void disable_clock(const usart::HardUsart& usart) noexcept
+{
+    switch (usart.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_USART1_CLK_DISABLE
+        __HAL_RCC_USART1_CLK_DISABLE();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_USART2_CLK_DISABLE
+        __HAL_RCC_USART2_CLK_DISABLE();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_USART3_CLK_DISABLE
+        __HAL_RCC_USART3_CLK_DISABLE();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_UART4_CLK_DISABLE
+        __HAL_RCC_UART4_CLK_DISABLE();
+        #endif
+        break;
+    case 4:
+        #ifdef __HAL_RCC_UART5_CLK_DISABLE
+        __HAL_RCC_UART5_CLK_DISABLE();
+        #endif
+        break;
+    case 5:
+        #ifdef __HAL_RCC_USART6_CLK_DISABLE
+        __HAL_RCC_USART6_CLK_DISABLE();
+        #endif
+        break;
+    }
+}
 
-void reset(const gpio::hidden::_Port& port) noexcept
+
+
+weak void reset(const gpio::hidden::_Port& port) noexcept
 {
     switch(reinterpret_cast<uintptr_t>(&port))
     {
@@ -389,14 +475,14 @@ void reset(const gpio::hidden::_Port& port) noexcept
         #endif
     }
 }
-void reset(const adc::RegularADC& adc) noexcept
+weak void reset(const adc::RegularADC& adc) noexcept
 {
     #ifdef __HAL_RCC_ADC_FORCE_RESET
     __HAL_RCC_ADC_FORCE_RESET();
     __HAL_RCC_ADC_RELEASE_RESET();
     #endif
 }
-void reset(const dma::BaseDMA& dma) noexcept
+weak void reset(const dma::BaseDMA& dma) noexcept
 {
     switch (dma.order)
     {
@@ -414,7 +500,7 @@ void reset(const dma::BaseDMA& dma) noexcept
         break;
     }
 }
-void reset(const tim::BasicTimer& tim) noexcept
+weak void reset(const tim::BasicTimer& tim) noexcept
 {
     const auto ptr = reinterpret_cast<TIM_TypeDef *>(&tim.reg);
 
@@ -539,13 +625,56 @@ void reset(const tim::BasicTimer& tim) noexcept
     }
     #endif
 }
-void reset(const flash::EmbeddedFlash& flash) noexcept
+weak void reset(const flash::EmbeddedFlash& flash) noexcept
 {
     #ifdef __HAL_RCC_FLASH_FORCE_RESET
     __HAL_RCC_FLASH_FORCE_RESET();
     __HAL_RCC_FLASH_RELEASE_RESET();
     #endif
 }
+weak void reset(const usart::HardUsart& usart) noexcept
+{
+    switch (usart.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_USART1_FORCE_RESET
+        __HAL_RCC_USART1_FORCE_RESET();
+        __HAL_RCC_USART1_RELEASE_RESET();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_USART2_FORCE_RESET
+        __HAL_RCC_USART2_FORCE_RESET();
+        __HAL_RCC_USART2_RELEASE_RESET();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_USART3_FORCE_RESET
+        __HAL_RCC_USART3_FORCE_RESET();
+        __HAL_RCC_USART3_RELEASE_RESET();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_UART4_FORCE_RESET
+        __HAL_RCC_UART4_FORCE_RESET();
+        __HAL_RCC_UART4_RELEASE_RESET();
+        #endif
+        break;
+    case 4:
+        #ifdef __HAL_RCC_UART5_FORCE_RESET
+        __HAL_RCC_UART5_FORCE_RESET();
+        __HAL_RCC_UART5_RELEASE_RESET();
+        #endif
+        break;
+    case 5:
+        #ifdef __HAL_RCC_USART6_FORCE_RESET
+        __HAL_RCC_USART6_FORCE_RESET();
+        __HAL_RCC_USART6_RELEASE_RESET();
+        #endif
+        break;
+    }
+}
+
 
 }
 }

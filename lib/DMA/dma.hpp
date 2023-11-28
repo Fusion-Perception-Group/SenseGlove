@@ -164,7 +164,7 @@ public:
         _Enabled enabled{*this};
         _Count count{*this};
 
-        constexpr Stream(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : _dma(dma), order(order), reg(reg), irqn(irqn) {}
+        Stream(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : _dma(dma), order(order), reg(reg), irqn(irqn) {}
         virtual ~Stream() = default;
         Stream & operator=(const Stream &) = delete;
 
@@ -476,7 +476,7 @@ public:
     {
     public:
 
-        constexpr StreamM2M(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : Stream(dma, order, reg, irqn) {}
+        StreamM2M(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : Stream(dma, order, reg, irqn) {}
 
         void set_direction(Direction direction) const override
         {

@@ -1,5 +1,6 @@
 #include <string>
 #include <chrono>
+#include "units.hpp"
 #include "mcu.hpp"
 #include "time.hpp"
 #include "ssd1306.hpp"
@@ -14,9 +15,6 @@ int main()
 {
     bool ret = true;
 
-    using std::chrono::operator ""s;
-    using std::chrono::operator ""ms;
-    using std::chrono::operator ""ns;
     using namespace vermils;
     using namespace stm32;
     using time::HighResTimer;
@@ -56,25 +54,37 @@ int main()
     };
 
     button.enable_irq();
-    //auto hires_clk = std::chrono::high_resolution_clock();
-    //auto now = hires_clk.now();
+    auto hires_clk = std::chrono::high_resolution_clock();
+    auto now = hires_clk.now();
     try
     {
         uintptr_t addr = 0x0807000B;
-        // flash::Flash.erase_all();
-        //render.format_at(0, 0, "{:.x}", flash::Flash.get<int>(addr));
-        flash::Flash.erase(addr, 4);
-        //flash::Flash.on_complete = [&render]()
-        //{
-        //    render.format_at(0, 0, "Flash complete!\n");
-        //};
-        flash::Flash.enable_interrupts();
-        flash::Flash.enable_irq();
-        flash::Flash.put<uint64_t>(addr, 0xdeadbeef);
-        //flash::test(addr);
+        Pin tx(PortA, 9), rx(PortA, 10);
+        PinConfig cfg(PinConfig::AF, PinConfig::VeryHigh, PinConfig::PushPull);
+        cfg.alternate = 7;
+        tx.load(cfg);
+        rx.load(cfg);
+
+        auto &usrt = usart::Usart1;
+        usrt.init();
+        //usrt.baudrate = 230400;
+        usrt.set_word_length(usart::WordLength::Bits9);
+        usrt.set_stop_bits(usart::StopBits::Two);
+        usrt.set_parity(usart::Parity::Even);
+        //render.format("{}", usrt.baudrate());
+        //usrt.set_parity(usart::Parity::Even);
+        usrt.write("FUCK!!!");
+        render.wrap = true;
+        for (int i = 0;; ++i)
+        {
+            auto c = usrt.get<char>();
+            render.render_char(c);
+            usrt.put(c);
+            //render.format_at(0, 0, "i = {}\n", i);
+        }
         render.format_at(0, 0, "{:.p}", flash::Flash.get<uint64_t>(addr));
-        // while(true)
-        //     render.format_at(0, 0, "{}\n", now.time_since_epoch().count());
+        while(true)
+            render.format_at(0, 0, "{}\n", now.time_since_epoch().count());
     }
     catch (const std::exception &e)
     {
