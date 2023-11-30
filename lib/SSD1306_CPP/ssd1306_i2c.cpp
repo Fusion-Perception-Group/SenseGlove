@@ -20,7 +20,7 @@ bool I2CDisplay::set_contrast(uint8_t contrast) const
         0x81,
         contrast
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -37,7 +37,7 @@ bool I2CDisplay::set_entire_display_on(bool ignore_gram) const
         CMD_STREAM,
         static_cast<uint8_t>(ignore_gram | 0xa4)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -54,7 +54,7 @@ bool I2CDisplay::set_inverse_display(bool inverse) const
         CMD_STREAM,
         static_cast<uint8_t>(inverse | 0xa6)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -71,7 +71,7 @@ bool I2CDisplay::set_display_on_off(bool on) const
         CMD_STREAM,
         static_cast<uint8_t>(on | 0xae)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -101,7 +101,7 @@ bool I2CDisplay::hscroll_setup(bool dir, uint8_t start_page, uint8_t end_page, B
         //0x00,
         //0xff
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -133,7 +133,7 @@ bool I2CDisplay::hvscroll_setup(bool dir, uint8_t start_page, uint8_t end_page, 
         //0x00,
         //0xff
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -150,7 +150,7 @@ bool I2CDisplay::set_scroll_on_off(bool on) const
         CMD_STREAM,
         static_cast<uint8_t>(on | 0x2f)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -177,7 +177,7 @@ bool I2CDisplay::set_vertical_scroll_area(uint8_t top_fixed_rows, uint8_t scroll
         top_fixed_rows,
         scroll_rows
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -196,7 +196,7 @@ bool I2CDisplay::set_lower_col_start_addr_for_page_mode(uint8_t addr) const
         CMD_STREAM,
         addr
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -215,7 +215,7 @@ bool I2CDisplay::set_higher_col_start_addr_for_page_mode(uint8_t addr) const
         CMD_STREAM,
         static_cast<uint8_t>(0x10 | addr)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 bool I2CDisplay::set_col_start_addr_for_page_mode(uint8_t addr) const
@@ -226,7 +226,7 @@ bool I2CDisplay::set_col_start_addr_for_page_mode(uint8_t addr) const
         static_cast<uint8_t>(0x0f & addr),  // lower 4 bits
         static_cast<uint8_t>(0x10 | (addr >> 4)) // higher 4 bits
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -247,7 +247,7 @@ bool I2CDisplay::set_memory_addressing_mode(I2CDisplay::MemoryAddressingMode mod
         0x20,
         mode
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -267,7 +267,7 @@ bool I2CDisplay::set_col_addr(uint8_t start, uint8_t end) const
         start,
         end
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -287,7 +287,7 @@ bool I2CDisplay::set_page_addr(uint8_t start, uint8_t end) const
         start,
         end
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -306,7 +306,7 @@ bool I2CDisplay::set_page_start_addr_for_page_mode(uint8_t addr) const
         CMD_STREAM,
         static_cast<uint8_t>(0xb0 | addr)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -325,7 +325,7 @@ bool I2CDisplay::set_display_start_line(uint8_t line) const
         CMD_STREAM,
         static_cast<uint8_t>(0x40 | line)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -342,7 +342,7 @@ bool I2CDisplay::set_seg_remap(bool remap) const
         CMD_STREAM,
         static_cast<uint8_t>(remap | 0xa0)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -362,7 +362,7 @@ bool I2CDisplay::set_multiplex_ratio(uint8_t ratio) const
         0xa8,
         ratio
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -379,7 +379,7 @@ bool I2CDisplay::set_com_output_scan_dir(bool dir) const
         CMD_STREAM,
         static_cast<uint8_t>((dir << 3) | 0xc0)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -399,7 +399,7 @@ bool I2CDisplay::set_display_offset(uint8_t offset) const
         0xd3,
         offset
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -418,7 +418,7 @@ bool I2CDisplay::set_com_pins_hardware_config(bool sequential, bool remapped) co
         0xda,
         static_cast<uint8_t>(0x02 | (sequential << 4) | (remapped << 5))
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -440,7 +440,7 @@ bool I2CDisplay::set_display_clock_divide_ratio(uint8_t ratio, uint8_t freq) con
         0xd5,
         static_cast<uint8_t>((freq << 4) | ratio)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -461,7 +461,7 @@ bool I2CDisplay::set_pre_charge_period(uint8_t phase1, uint8_t phase2) const
         0xd9,
         static_cast<uint8_t>((phase2 << 4) | phase1)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -481,7 +481,7 @@ bool I2CDisplay::set_vcomh_deselect_level(uint8_t level) const
         0xdb,
         static_cast<uint8_t>(level << 4)
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -499,7 +499,7 @@ bool I2CDisplay::set_charge_pump(bool enable) const
         0x8d,
         static_cast<uint8_t>(0x10 | (enable << 2))
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -515,7 +515,7 @@ bool I2CDisplay::nop() const
         CMD_STREAM,
         0xe3
     };
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**
@@ -553,7 +553,7 @@ bool I2CDisplay::set_value(uint8_t value) const
         value
     };
 
-    return i2c.write(address, data, sizeof(data));
+    return i2c.write_bytes(address, data, sizeof(data));
 }
 
 /**

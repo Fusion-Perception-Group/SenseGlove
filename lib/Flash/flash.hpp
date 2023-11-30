@@ -2,8 +2,8 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <iterator>
 #include <ranges>
-#include <span>
 #include <concepts>
 #include <functional>
 #include <utility>
@@ -27,19 +27,55 @@ using addr_t = std::uintptr_t;
 using CompleteCallbackType = std::function<void()>;
 using UnitRange = std::pair<addr_t, addr_t>;
 
-enum class Error
+class FlashException : public std::runtime_error
 {
-    None=0,
-    Unknown,
-    ReadProtected,
-    WriteProtected,
-    InvalidConfig,  // registers are not configured properly
-    InvalidAddr,    // address is not valid
-    ParallelSizeMismatch,
-    AlignmentError,
+public:
+    FlashException(const char * msg="Flash Exception") : std::runtime_error(msg) {}
 };
 
-using ErrorCallbackType = std::function<void(Error)>;
+using ErrorCallbackType = std::function<void(const FlashException&)>;
+
+class ReadProtected : public FlashException
+{
+public:
+    ReadProtected() : FlashException("Attempt to write read protected flash address") {}
+};
+
+class WriteProtected : public FlashException
+{
+public:
+    WriteProtected() : FlashException("Attempt to write write protected flash address") {}
+};
+
+class InvalidConfig : public FlashException
+{
+public:
+    InvalidConfig() : FlashException("Flash registers are not configured properly") {}
+};
+
+class InvalidAddr : public FlashException
+{
+public:
+    InvalidAddr() : FlashException("Invalid flash address") {}
+};
+
+class ParallelSizeMismatch : public FlashException
+{
+public:
+    ParallelSizeMismatch() : FlashException("Parallel size mismatch") {}
+};
+
+class AlignmentError : public FlashException
+{
+public:
+    AlignmentError() : FlashException("Alignment error") {}
+};
+
+class ValidationError : public FlashException
+{
+public:
+    ValidationError(const char * msg="Flash validation error") : FlashException(msg) {}
+};
 
 bool enable_instruction_cache(); // enable instruction cache if available
 bool enable_data_cache(); // enable data cache if available
@@ -48,17 +84,6 @@ inline bool enable_prefetch() // enable prefetch buffer if available
     return enable_instruction_cache() && enable_data_cache();
 }
 
-class FlashError : public std::runtime_error
-{
-public:
-    using std::runtime_error::runtime_error;
-};
-
-class ValidationError : public FlashError
-{
-public:
-    using FlashError::FlashError;
-};
 
 consteval unsigned long long operator ""_Bytes(unsigned long long size)
 {
@@ -71,6 +96,7 @@ consteval unsigned long long operator ""_KiB(unsigned long long size)
 
 class BaseFlash
 {
+protected:
 public:
     bool validate = false;
     virtual ~BaseFlash() = default;
@@ -88,12 +114,12 @@ public:
      * @throw FlashError (std::runtime_error)
      * @throw ValidationError (FlashError & std::runtime_error)
      */
-    virtual void write(addr_t addr, const void * data, size_t bytes) = 0;
+    virtual void write_bytes(addr_t addr, const void * data, size_t bytes) = 0;
     /**
      * @throw FlashError
      * @throw invalid_argument if addr is not valid
      */
-    virtual void read(addr_t addr, void * data, size_t bytes) const = 0;
+    virtual void read_bytes(addr_t addr, void * data, size_t bytes) const = 0;
     /**
      * @throw FlashError
      * @throw invalid_argument if addr is not valid
@@ -103,27 +129,58 @@ public:
      * @throw FlashError
      */
     virtual void erase_all() = 0;
-    template <typename T>
-    void write(addr_t addr, std::span<T> data)
-    {
-        write(addr, data.data(), data.size_bytes());
-    }
+    virtual void raise_if_error(bool clear=true) const = 0;
     template <typename T>
     void put(addr_t addr, const T & item)
     {
-        write(addr, &item, sizeof(T));
-    }
-    template <typename T>
-    void read(addr_t addr, std::span<T> data) const
-    {
-        read(addr, data.data(), data.size_bytes());
+        write_bytes(addr, &item, sizeof(T));
     }
     template <typename T>
     T get(addr_t addr) const requires(std::is_trivially_copyable_v<T>)
     {
         T item;
-        read(addr, &item, sizeof(T));
+        read_bytes(addr, &item, sizeof(T));
         return item;
+    }
+    template <std::input_iterator Iter_t, std::sentinel_for<Iter_t> Senti_t>
+    size_t write(addr_t addr, Iter_t begin, Senti_t end)
+    {
+        const addr_t start_addr = addr;
+        size_t unit_bytes = sizeof(typename std::iterator_traits<Iter_t>::value_type);
+        while (begin != end)
+        {
+            put(addr, *begin++);
+            addr += unit_bytes;
+        }
+        return addr - start_addr;
+    }
+    
+    template <std::ranges::input_range Range_t>
+    size_t write(addr_t addr, const Range_t & range)
+    {
+        return write(addr, std::ranges::begin(range), std::ranges::end(range));
+    }
+
+    template <typename Iter_t, typename Senti_t>
+    requires std::sentinel_for<Senti_t, Iter_t> &&
+             std::output_iterator<Iter_t, typename std::iterator_traits<Iter_t>::value_type>
+    size_t read(addr_t addr, Iter_t begin, Senti_t end) const
+    {
+        const addr_t start_addr = addr;
+        size_t unit_bytes = sizeof(typename std::iterator_traits<Iter_t>::value_type);
+        while (begin != end)
+        {
+            *begin = get<typename std::iterator_traits<Iter_t>::value_type>(addr);
+            ++begin;
+            addr += unit_bytes;
+        }
+        return addr - start_addr;
+    }
+    template <typename Range_t>
+    requires std::ranges::output_range<Range_t, typename std::ranges::range_value_t<Range_t>>
+    size_t read(addr_t addr, Range_t && range) const
+    {
+        return read(addr, std::ranges::begin(range), std::ranges::end(range));
     }
 };
 
@@ -149,8 +206,8 @@ public:
     CompleteCallbackType on_complete;
     bool is_valid_range(addr_t addr_start, size_t size) const noexcept override;
     UnitRange get_unit_range(addr_t addr) const override;
-    void write(addr_t addr, const void * data, size_t bytes) override;
-    void read(addr_t addr, void * data, size_t bytes) const override;
+    void write_bytes(addr_t addr, const void * data, size_t bytes) override;
+    void read_bytes(addr_t addr, void * data, size_t bytes) const override;
     void erase(addr_t addr, size_t bytes) override;
     void erase_all() override;
 
@@ -187,8 +244,8 @@ public:
         nvic::disable_irq(irqn);
     }
 
-    Error get_error() const noexcept;
     void clear_error() const noexcept;
+    void raise_if_error(bool clear=true) const override final;
     void on_error_handler() const noexcept;
     void on_complete_handler() const noexcept;
 

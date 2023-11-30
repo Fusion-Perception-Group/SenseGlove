@@ -6,6 +6,7 @@
 #include "i2c.hpp"
 #include "ssd1306.hpp"
 #include "texrender.hpp"
+#include"units.hpp"
 
 #define FMT_HEADER_ONLY
 #include "ffmt.hpp"
@@ -46,14 +47,30 @@ int main()
     Pin led(LED_GPIO_PORT, LED_PIN, config);
 
     Pin scl(PortB, 6), sda(PortB, 7);
-    i2c::SoftMaster i2c(sda, scl);
-
-    uint32_t start = timer.get_cycles(), test_size=100;
+    PinConfig i2ccfg(PinConfig::AF, PinConfig::VeryHigh, PinConfig::OpenDrain);
+    i2ccfg.alternate = 4;
+    scl.load(i2ccfg);
+    sda.load(i2ccfg);
+    //i2c::SoftMaster i2c(sda, scl);
+    auto &i2c = i2c::I2c1;
+    i2c.init();
+    //i2c.set_speed(i2c::Speed::FastPlus);
+    i2c.clock_speed = 1_MHz;
+    uint32_t start = timer.get_cycles(), test_size=1000;
     
+    i2c.select(0x78, false);
     for (unsigned i = 0; i < test_size; ++i)
     {
+        try
+        {
         i2c.write_byte(0xe5);
+
+        }
+        catch (...)
+        {
+        }
     }
+    i2c.end();
     uint32_t end = timer.get_cycles();
     double sec = double(end - start) / stm32::SystemCoreClock;
     double kbps = test_size * 8.0 / 1000 / sec;
@@ -70,6 +87,7 @@ int main()
 
     render.render(0, 12, "I2C Benchmark!\n");
     render << ffmt::format("Speed: {} kbit/s", kbps);
+    render << ffmt::format("Clock: {} Khz", i2c.clock_speed() / 1000);
 
     while (ret)
     {
@@ -90,9 +108,4 @@ void BUTTON_Init()
     //    GPIO_MODE_INPUT,
     //    GPIO_PULLUP,
     //    GPIO_SPEED_HIGH);
-}
-
-extern "C" void SysTick_Handler()
-{
-    //HAL_IncTick();
 }

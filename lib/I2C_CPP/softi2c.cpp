@@ -14,11 +14,7 @@ namespace i2c
         const gpio::Pin &sda_, const gpio::Pin &scl_, const uint32_t delay_us_,
         bool highspeed_, uint8_t master_code_,
         bool use_pp_for_hs_, bool start_byte_
-        ):
-        BaseMaster(
-            [this]() -> bool { return _arbitration_lost; },
-            [this](bool value) { _arbitration_lost = value; }
-        ), sda(sda_), scl(scl_), delay_us(delay_us_), highspeed(highspeed_), master_code(master_code_),
+        ):sda(sda_), scl(scl_), delay_us(delay_us_), highspeed(highspeed_), master_code(master_code_),
         use_pp_for_hs(use_pp_for_hs_), start_byte(start_byte_)
     {
         sda.port.enable_clock();
@@ -208,24 +204,20 @@ namespace i2c
      * @param size 
      * @return size of data written
      * @throw `NoSlaveAck` if address is not acknowledged
+     * @throw `I2CException` if any error occurs
      */
-    size_t SoftMaster::write(addr_t address, const uint8_t *data, const std::size_t size) const
+    size_t SoftMaster::write_bytes(addr_t address, const uint8_t *data, const std::size_t size) const
     {
         if (!select(address, false))
             throw NoSlaveAck();
         size_t i = 0;
-        try
+
+        for (; i < size; ++i)
         {
-            for (; i < size; ++i)
-            {
-                if (!write_byte(data[i]))
-                    return i;
-                raise_if_arbitration_lost(false);
-            }
+            if (!write_byte(data[i]))
+                return i;
+            raise_if_arbitration_lost(false);
         }
-        catch (const ArbitrationLost &e)
-        {}
-        end();
         return i;
     }
 
@@ -237,25 +229,20 @@ namespace i2c
      * @param maxsize 
      * @return `std::size_t` number of bytes read
      * @throw `NoSlaveAck` if address is not acknowledged
+     * @throw `I2CException` if any error occurs
      */
-    std::size_t SoftMaster::read(addr_t address, uint8_t *data, const std::size_t maxsize) const
+    std::size_t SoftMaster::read_bytes(addr_t address, uint8_t *data, const std::size_t maxsize) const
     {
         std::size_t size = 0;
 
         if (!select(address, true))
             throw NoSlaveAck();
         
-        try
+
+        for (; size < maxsize; ++size)
         {
-            for (; size < maxsize; ++size)
-            {
-                data[size] = read_byte(size < maxsize - 1);
-                raise_if_arbitration_lost(false);
-            }
-        }
-        catch (const ArbitrationLost &e)
-        {
-            return size;
+            data[size] = read_byte(size < maxsize - 1);
+            raise_if_arbitration_lost(false);
         }
         end();
         

@@ -82,7 +82,7 @@ static inline void unlock()
     detail::flash_reg.KEYR = 0x45670123U;
     detail::flash_reg.KEYR = 0xCDEF89ABU;
     if (detail::flash_reg.CR & FLASH_CR_LOCK)
-        throw FlashError("Flash unlock failed");
+        throw FlashException("Flash unlock failed");
 }
 
 static inline void lock() noexcept
@@ -150,7 +150,7 @@ static inline void unlockopts()
     detail::flash_reg.OPTKEYR = 0x08192A3BU;
     detail::flash_reg.OPTKEYR = 0x4C5D6E7FU;
     if (detail::flash_reg.OPTCR & FLASH_OPTCR_OPTLOCK)
-        throw FlashError("Flash option unlock failed");
+        throw FlashException("Flash option unlock failed");
 }
 
 static inline void lockopts() noexcept
@@ -167,7 +167,8 @@ static inline void write_data(addr_t addr, const void * data, size_t bytes) noex
     set_parallel_size(ParallelSize::x8);
     while (leading--)
     {
-        --bytes;
+        if(!(bytes--))
+            return;
         *reinterpret_cast<volatile uint8_t *>(addr++) = *(data8++);
         while(is_busy());
     }
@@ -184,7 +185,7 @@ static inline void write_data(addr_t addr, const void * data, size_t bytes) noex
             *reinterpret_cast<volatile uint8_t *>(addr + bytes - 3) = *(data8 + bytes - 3);
             while (is_busy());
         case 2:
-            *reinterpret_cast<volatile uint16_t *>(addr + bytes - 2) = *(data8 + bytes - 2);
+            *reinterpret_cast<volatile uint8_t *>(addr + bytes - 2) = *(data8 + bytes - 2);
             while (is_busy());
         case 1:
             *reinterpret_cast<volatile uint8_t *>(addr + bytes - 1) = *(data8 + bytes - 1);
@@ -244,10 +245,9 @@ UnitRange EmbeddedFlash::get_unit_range(addr_t addr) const
     return {addr, addr + 1_Bytes};
 }
 
-void EmbeddedFlash::write(addr_t addr, const void * data, size_t size)
+void EmbeddedFlash::write_bytes(addr_t addr, const void * data, size_t size)
 {
-    if (get_error() != Error::None)
-        throw FlashError("Flash is in error state");
+    raise_if_error();
 
     if (addr >= OPT_START && addr < OPT_END)
     {
@@ -267,10 +267,9 @@ void EmbeddedFlash::write(addr_t addr, const void * data, size_t size)
         throw std::invalid_argument("Invalid address");
     }
 
-    if (get_error() != Error::None)
-        throw FlashError("Flash is in error state");
+    raise_if_error();
 }
-void EmbeddedFlash::read(addr_t addr, void * data, size_t size) const
+void EmbeddedFlash::read_bytes(addr_t addr, void * data, size_t size) const
 {
     if (!is_valid_range(addr, size))
         throw std::invalid_argument("Invalid address");
@@ -279,8 +278,7 @@ void EmbeddedFlash::read(addr_t addr, void * data, size_t size) const
 
     std::memcpy(data, reinterpret_cast<const void *>(addr), size);
 
-    if (get_error() != Error::None)
-        throw FlashError("Flash is in error state");
+    raise_if_error();
 }
 void EmbeddedFlash::erase(addr_t addr, size_t size)
 {
@@ -312,8 +310,7 @@ void EmbeddedFlash::erase(addr_t addr, size_t size)
         throw std::invalid_argument("Invalid address");
     }
 
-    if (get_error() != Error::None)
-        throw FlashError("Flash is in error state");
+    raise_if_error();
 }
 void EmbeddedFlash::erase_all()
 {
@@ -327,8 +324,7 @@ void EmbeddedFlash::erase_all()
     lock();
     reset_ins_cache();
 
-    if (get_error() != Error::None)
-        throw FlashError("Flash is in error state");
+    raise_if_error();
 }
 
 
@@ -360,45 +356,68 @@ void EmbeddedFlash::clear_error() const noexcept
 {
     detail::flash_reg.SR = 0xF9U << 1; // clear error flags
 }
-Error EmbeddedFlash::get_error() const noexcept
+void EmbeddedFlash::raise_if_error(bool clear) const
 {
     if (!(detail::flash_reg.SR & (0xF9 << 1)))
-        return Error::None;
+        return ;
 
     if (detail::flash_reg.SR & (0xF0U << 1))
     {
         if (detail::flash_reg.SR & (0xC0U << 1))
         {
-            if (detail::flash_reg.SR & (0x80U << 1))
-                return Error::ReadProtected;
+            if (detail::flash_reg.SR & FLASH_SR_RDERR)
+            {
+                if (clear)
+                    detail::flash_reg.SR &= ~FLASH_SR_RDERR;
+                throw ReadProtected();
+            }
             else
-                return Error::InvalidConfig;
+            {
+                if (clear)
+                    detail::flash_reg.SR &= ~FLASH_SR_PGSERR;
+                throw InvalidConfig();
+            }
         }
         else
         {
-            if (detail::flash_reg.SR & (0x20U << 1))
-                return Error::ParallelSizeMismatch;
+            if (detail::flash_reg.SR & FLASH_SR_PGPERR)
+            {
+                if (clear)
+                    detail::flash_reg.SR &= ~FLASH_SR_PGPERR;
+                throw ParallelSizeMismatch();
+            }
             else
-                return Error::AlignmentError;
+            {
+                if (clear)
+                    detail::flash_reg.SR &= ~FLASH_SR_PGAERR;
+                throw AlignmentError();
+            }
         }
     }
     else
     {
-        if (detail::flash_reg.SR & (0x8U << 1))
-            return Error::WriteProtected;
+        if (detail::flash_reg.SR & FLASH_SR_WRPERR)
+        {
+            if (clear)
+                detail::flash_reg.SR &= ~FLASH_SR_WRPERR;
+            throw WriteProtected();
+        }
         else
-            return Error::Unknown;
+        {
+            throw FlashException("Unknown Flash Error");
+        }
     }
 }
 void EmbeddedFlash::on_error_handler() const noexcept
 try{
-    if(auto err = get_error(); err != Error::None)
+    try{
+        raise_if_error(false);
+    }
+    catch(const FlashException & err)
     {
         detail::flash_reg.SR = 0x2U; // clear interrupt flag
         if (on_error)
-        {
             on_error(err);
-        }
     }
 }
 catch(...) {}

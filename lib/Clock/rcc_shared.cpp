@@ -6,6 +6,11 @@
 #include "dma.hpp"
 #include "tim.hpp"
 #include "usart.hpp"
+#include "i2c.hpp"
+#include "spi.hpp"
+#include "time.hpp"
+#include "trace.hpp"
+#include "macro.h"
 
 #define weak __attribute__((weak))
 
@@ -225,6 +230,69 @@ weak void enable_clock(const usart::HardUsart& usart) noexcept
         break;
     }
 }
+weak void enable_clock(const i2c::HardMaster& i2c) noexcept
+{
+    switch (i2c.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_I2C1_CLK_ENABLE
+        __HAL_RCC_I2C1_CLK_ENABLE();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_I2C2_CLK_ENABLE
+        __HAL_RCC_I2C2_CLK_ENABLE();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_I2C3_CLK_ENABLE
+        __HAL_RCC_I2C3_CLK_ENABLE();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_I2C4_CLK_ENABLE
+        __HAL_RCC_I2C4_CLK_ENABLE();
+        #endif
+        break;
+    }
+}
+weak void enable_clock(const spi::HardwareInterface& spi) noexcept
+{
+    switch (spi.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_SPI1_CLK_ENABLE
+        __HAL_RCC_SPI1_CLK_ENABLE();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_SPI2_CLK_ENABLE
+        __HAL_RCC_SPI2_CLK_ENABLE();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_SPI3_CLK_ENABLE
+        __HAL_RCC_SPI3_CLK_ENABLE();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_SPI4_CLK_ENABLE
+        __HAL_RCC_SPI4_CLK_ENABLE();
+        #endif
+        break;
+    case 4:
+        #ifdef __HAL_RCC_SPI5_CLK_ENABLE
+        __HAL_RCC_SPI5_CLK_ENABLE();
+        #endif
+        break;
+    case 5:
+        #ifdef __HAL_RCC_SPI6_CLK_ENABLE
+        __HAL_RCC_SPI6_CLK_ENABLE();
+        #endif
+        break;
+    }
+}
+
 
 
 weak void disable_clock(const gpio::hidden::_Port& port) noexcept
@@ -412,8 +480,68 @@ weak void disable_clock(const usart::HardUsart& usart) noexcept
         break;
     }
 }
-
-
+weak void disable_clock(const i2c::HardMaster& i2c) noexcept
+{
+    switch (i2c.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_I2C1_CLK_DISABLE
+        __HAL_RCC_I2C1_CLK_DISABLE();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_I2C2_CLK_DISABLE
+        __HAL_RCC_I2C2_CLK_DISABLE();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_I2C3_CLK_DISABLE
+        __HAL_RCC_I2C3_CLK_DISABLE();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_I2C4_CLK_DISABLE
+        __HAL_RCC_I2C4_CLK_DISABLE();
+        #endif
+        break;
+    }
+}
+weak void disable_clock(const spi::HardwareInterface& spi) noexcept
+{
+    switch (spi.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_SPI1_CLK_DISABLE
+        __HAL_RCC_SPI1_CLK_DISABLE();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_SPI2_CLK_DISABLE
+        __HAL_RCC_SPI2_CLK_DISABLE();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_SPI3_CLK_DISABLE
+        __HAL_RCC_SPI3_CLK_DISABLE();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_SPI4_CLK_DISABLE
+        __HAL_RCC_SPI4_CLK_DISABLE();
+        #endif
+        break;
+    case 4:
+        #ifdef __HAL_RCC_SPI5_CLK_DISABLE
+        __HAL_RCC_SPI5_CLK_DISABLE();
+        #endif
+        break;
+    case 5:
+        #ifdef __HAL_RCC_SPI6_CLK_DISABLE
+        __HAL_RCC_SPI6_CLK_DISABLE();
+        #endif
+        break;
+    }
+}
 
 weak void reset(const gpio::hidden::_Port& port) noexcept
 {
@@ -670,6 +798,78 @@ weak void reset(const usart::HardUsart& usart) noexcept
         #ifdef __HAL_RCC_USART6_FORCE_RESET
         __HAL_RCC_USART6_FORCE_RESET();
         __HAL_RCC_USART6_RELEASE_RESET();
+        #endif
+        break;
+    }
+}
+weak void reset(const i2c::HardMaster& i2c) noexcept
+{
+    switch (i2c.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_I2C1_FORCE_RESET
+        __HAL_RCC_I2C1_FORCE_RESET();
+        __HAL_RCC_I2C1_RELEASE_RESET();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_I2C2_FORCE_RESET
+        __HAL_RCC_I2C2_FORCE_RESET();
+        __HAL_RCC_I2C2_RELEASE_RESET();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_I2C3_FORCE_RESET
+        __HAL_RCC_I2C3_FORCE_RESET();
+        __HAL_RCC_I2C3_RELEASE_RESET();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_I2C4_FORCE_RESET
+        __HAL_RCC_I2C4_FORCE_RESET();
+        __HAL_RCC_I2C4_RELEASE_RESET();
+        #endif
+        break;
+    }
+}
+weak void reset(const spi::HardwareInterface& spi) noexcept
+{
+    switch (spi.order)
+    {
+    case 0:
+        #ifdef __HAL_RCC_SPI1_FORCE_RESET
+        __HAL_RCC_SPI1_FORCE_RESET();
+        __HAL_RCC_SPI1_RELEASE_RESET();
+        #endif
+        break;
+    case 1:
+        #ifdef __HAL_RCC_SPI2_FORCE_RESET
+        __HAL_RCC_SPI2_FORCE_RESET();
+        __HAL_RCC_SPI2_RELEASE_RESET();
+        #endif
+        break;
+    case 2:
+        #ifdef __HAL_RCC_SPI3_FORCE_RESET
+        __HAL_RCC_SPI3_FORCE_RESET();
+        __HAL_RCC_SPI3_RELEASE_RESET();
+        #endif
+        break;
+    case 3:
+        #ifdef __HAL_RCC_SPI4_FORCE_RESET
+        __HAL_RCC_SPI4_FORCE_RESET();
+        __HAL_RCC_SPI4_RELEASE_RESET();
+        #endif
+        break;
+    case 4:
+        #ifdef __HAL_RCC_SPI5_FORCE_RESET
+        __HAL_RCC_SPI5_FORCE_RESET();
+        __HAL_RCC_SPI5_RELEASE_RESET();
+        #endif
+        break;
+    case 5:
+        #ifdef __HAL_RCC_SPI6_FORCE_RESET
+        __HAL_RCC_SPI6_FORCE_RESET();
+        __HAL_RCC_SPI6_RELEASE_RESET();
         #endif
         break;
     }

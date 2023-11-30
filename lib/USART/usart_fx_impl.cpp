@@ -144,136 +144,271 @@ void HardUsart::break_transmission() noexcept
 {
     reg.CR1 |= USART_CR1_SBK;
 }
-size_t HardUsart::write(const void *data_v, size_t size) noexcept
+size_t HardUsart::exchange_bytes(const void *send, size_t send_size, void *recv, size_t recv_size)
 {
-    size_t count = 0;
-    const uint8_t *data = static_cast<const uint8_t *>(data_v);
-    reg.CR1 |= USART_CR1_TE;
+    size_t sent_count = 0;
+    size_t recv_count = 0;
+    const uint8_t *send_ptr = static_cast<const uint8_t *>(send);
+    uint8_t *recv_ptr = static_cast<uint8_t *>(recv);
+
+    if (send == nullptr)
+        send_size = 0;
+    if (recv == nullptr)
+        recv_size = 0;
+
+    reg.CR1 |= USART_CR1_TE | USART_CR1_RE;
     if ((get_word_length() == WordLength::Bits9) ^  // 8 bit mode
         (get_parity() == Parity::None))
     {
-        while (count < size)
+        while (sent_count + recv_count < send_size + recv_size)
         {
-            while(not (reg.SR & USART_SR_TXE))
+            bool send_ready, recv_ready;
+            do
+            {
+                send_ready = reg.SR & USART_SR_TXE;
+                recv_ready = reg.SR & USART_SR_RXNE;
                 raise_if_error();
-            reg.DR = *data++;
-            ++count;
+            }
+            while(not send_ready and not recv_ready);
+
+            if (send_ready and sent_count < send_size)
+            {
+                reg.DR = *send_ptr++;
+                ++sent_count;
+            }
+            if (recv_ready and recv_count < recv_size)
+            {
+                *recv_ptr++ = reg.DR;
+                ++recv_count;
+            }
         }
     }
     else if (get_word_length() == WordLength::Bits9) // 9 bit mode
     {
-        unsigned overtook = 0;
-        uint16_t tmp;
-        while(count < size)
+        unsigned overtook = 0, overget = 0;
+        uint16_t send_tmp, recv_tmp;
+        while (sent_count + recv_count < send_size + recv_size)
         {
-            while(not (reg.SR & USART_SR_TXE))
-                raise_if_error();
-
-            tmp = *data++ >> overtook;
-            if (count != size - 1)
-                tmp |= *data << (8-overtook);
-            reg.DR = tmp & 0x1FFU;
-            if (++overtook == 8)
+            bool send_ready, recv_ready;
+            do
             {
-                overtook = 0;
-                ++data;
-                ++count;
-                continue;
+                send_ready = reg.SR & USART_SR_TXE;
+                recv_ready = reg.SR & USART_SR_RXNE;
+                raise_if_error();
+            }
+            while(not send_ready and not recv_ready);
+
+            if (send_ready and sent_count < send_size)
+            {
+                send_tmp = *send_ptr++ >> overtook;
+                if (sent_count != send_size - 1)
+                    send_tmp |= *send_ptr << (8-overtook);
+                reg.DR = send_tmp & 0x1FFU;
+                if (++overtook == 8)
+                {
+                    overtook = 0;
+                    ++send_ptr;
+                    ++sent_count;
+                    continue;
+                }
+            }
+            if (recv_ready and recv_count < recv_size)
+            {
+                recv_tmp = reg.DR & 0x1FFU;
+                *recv_ptr++ |= recv_tmp << overget;
+                if (recv_count != recv_size - 1)
+                    *recv_ptr = recv_tmp >> (8-overget);
+                if (++overget == 8)
+                {
+                    overget = 0;
+                    ++recv_ptr;
+                    ++recv_count;
+                    continue;
+                }
             }
         }
     }
     else // 7 bit mode
     {
-        unsigned sent_bits=0;
-        uint16_t tmp;  // use 16bit to avoid undefined behavior
-        while(count < size)
+        unsigned sent_bits=0, recv_bits=0;
+        uint16_t send_tmp, recv_tmp;  // use 16bit to avoid undefined behavior
+        while (sent_count + recv_count < send_size + recv_size)
         {
-            while(not (reg.SR & USART_SR_TXE))
-                raise_if_error();
-
-            tmp = *data >> sent_bits;
-            if (count != size)
-                tmp |= *(data+1) << (8-sent_bits);
-            reg.DR = tmp & 0x7FU;
-            sent_bits += 7;
-            if (sent_bits >= 8)
+            bool send_ready, recv_ready;
+            do
             {
-                sent_bits -= 8;
-                ++data;
-                ++count;
-                continue;
+                send_ready = reg.SR & USART_SR_TXE;
+                recv_ready = reg.SR & USART_SR_RXNE;
+                raise_if_error();
+            }
+            while(not send_ready and not recv_ready);
+
+            if (send_ready and sent_count < send_size)
+            {
+                send_tmp = *send_ptr >> sent_bits;
+                if (sent_count != send_size - 1)
+                    send_tmp |= *(send_ptr+1) << (8-sent_bits);
+                reg.DR = send_tmp & 0x7FU;
+                sent_bits += 7;
+                if (sent_bits >= 8)
+                {
+                    sent_bits -= 8;
+                    ++send_ptr;
+                    ++sent_count;
+                    continue;
+                }
+            }
+            if (recv_ready and recv_count < recv_size)
+            {
+                recv_tmp = reg.DR & 0x7FU;
+                *recv_ptr |= recv_tmp << recv_bits;
+                recv_bits += 7;
+                if (recv_bits >= 8)
+                {
+                    recv_bits -= 8;
+                    ++recv_ptr;
+                    if (++recv_count != recv_size)
+                        *recv_ptr = recv_tmp >> (8-recv_bits);
+                    continue;
+                }
             }
         }
     }
 
     while (not (reg.SR & USART_SR_TC));
     raise_if_error();
-    return count;
+    return sent_count + recv_count;
 }
-size_t HardUsart::read(void *data, size_t size) noexcept
-{
-    reg.CR1 |= USART_CR1_RE;
-    uint8_t *ptr = static_cast<uint8_t *>(data);
-    size_t count = 0;
-    if ((get_word_length() == WordLength::Bits9) ^  // 8 bit mode
-        (get_parity() == Parity::None))
-    {
-        while (count < size)
-        {
-            while(not (reg.SR & USART_SR_RXNE))
-                raise_if_error();
-            *ptr++ = reg.DR;
-            ++count;
-        }
-    }
-    else if (get_word_length() == WordLength::Bits9) // 9 bit mode
-    {
-        unsigned overtook = 0;
-        uint16_t tmp;
-        *ptr = 0;
-        while(count < size)
-        {
-            while(not (reg.SR & USART_SR_RXNE))
-                raise_if_error();
+// size_t HardUsart::write(const void *data_v, size_t size)
+// {
+//     size_t count = 0;
+//     const uint8_t *data = static_cast<const uint8_t *>(data_v);
+//     reg.CR1 |= USART_CR1_TE;
+//     if ((get_word_length() == WordLength::Bits9) ^  // 8 bit mode
+//         (get_parity() == Parity::None))
+//     {
+//         while (count < size)
+//         {
+//             while(not (reg.SR & USART_SR_TXE))
+//                 raise_if_error();
+//             reg.DR = *data++;
+//             ++count;
+//         }
+//     }
+//     else if (get_word_length() == WordLength::Bits9) // 9 bit mode
+//     {
+//         unsigned overtook = 0;
+//         uint16_t tmp;
+//         while(count < size)
+//         {
+//             while(not (reg.SR & USART_SR_TXE))
+//                 raise_if_error();
 
-            tmp = reg.DR & 0x1FFU;
-            *ptr++ |= tmp << overtook;
-            if (count != size - 1)
-                *ptr = tmp >> (8-overtook);
-            if (++overtook == 8)
-            {
-                overtook = 0;
-                ++ptr;
-                ++count;
-                continue;
-            }
-        }
-    }
-    else // 7 bit mode
-    {
-        unsigned filled_bits=0;
-        uint16_t tmp;  // use 16bit to avoid undefined behavior
-        while(count < size)
-        {
-            while(not (reg.SR & USART_SR_RXNE))
-                raise_if_error();
+//             tmp = *data++ >> overtook;
+//             if (count != size - 1)
+//                 tmp |= *data << (8-overtook);
+//             reg.DR = tmp & 0x1FFU;
+//             if (++overtook == 8)
+//             {
+//                 overtook = 0;
+//                 ++data;
+//                 ++count;
+//                 continue;
+//             }
+//         }
+//     }
+//     else // 7 bit mode
+//     {
+//         unsigned sent_bits=0;
+//         uint16_t tmp;  // use 16bit to avoid undefined behavior
+//         while(count < size)
+//         {
+//             while(not (reg.SR & USART_SR_TXE))
+//                 raise_if_error();
 
-            tmp = reg.DR & 0x7FU;
-            *ptr |= tmp << filled_bits;
-            filled_bits += 7;
-            if (filled_bits >= 8)
-            {
-                filled_bits -= 8;
-                ++ptr;
-                if (++count != size)
-                    *ptr = tmp >> (8-filled_bits);
-                continue;
-            }
-        }
-    }
+//             tmp = *data >> sent_bits;
+//             if (count != size)
+//                 tmp |= *(data+1) << (8-sent_bits);
+//             reg.DR = tmp & 0x7FU;
+//             sent_bits += 7;
+//             if (sent_bits >= 8)
+//             {
+//                 sent_bits -= 8;
+//                 ++data;
+//                 ++count;
+//                 continue;
+//             }
+//         }
+//     }
 
-    return count;
-}
+//     while (not (reg.SR & USART_SR_TC));
+//     raise_if_error();
+//     return count;
+// }
+// size_t HardUsart::read(void *data, size_t size)
+// {
+//     reg.CR1 |= USART_CR1_RE;
+//     uint8_t *ptr = static_cast<uint8_t *>(data);
+//     size_t count = 0;
+//     if ((get_word_length() == WordLength::Bits9) ^  // 8 bit mode
+//         (get_parity() == Parity::None))
+//     {
+//         while (count < size)
+//         {
+//             while(not (reg.SR & USART_SR_RXNE))
+//                 raise_if_error();
+//             *ptr++ = reg.DR;
+//             ++count;
+//         }
+//     }
+//     else if (get_word_length() == WordLength::Bits9) // 9 bit mode
+//     {
+//         unsigned overtook = 0;
+//         uint16_t tmp;
+//         *ptr = 0;
+//         while(count < size)
+//         {
+//             while(not (reg.SR & USART_SR_RXNE))
+//                 raise_if_error();
+
+//             tmp = reg.DR & 0x1FFU;
+//             *ptr++ |= tmp << overtook;
+//             if (count != size - 1)
+//                 *ptr = tmp >> (8-overtook);
+//             if (++overtook == 8)
+//             {
+//                 overtook = 0;
+//                 ++ptr;
+//                 ++count;
+//                 continue;
+//             }
+//         }
+//     }
+//     else // 7 bit mode
+//     {
+//         unsigned filled_bits=0;
+//         uint16_t tmp;  // use 16bit to avoid undefined behavior
+//         while(count < size)
+//         {
+//             while(not (reg.SR & USART_SR_RXNE))
+//                 raise_if_error();
+
+//             tmp = reg.DR & 0x7FU;
+//             *ptr |= tmp << filled_bits;
+//             filled_bits += 7;
+//             if (filled_bits >= 8)
+//             {
+//                 filled_bits -= 8;
+//                 ++ptr;
+//                 if (++count != size)
+//                     *ptr = tmp >> (8-filled_bits);
+//                 continue;
+//             }
+//         }
+//     }
+
+//     return count;
+// }
 
 /**
  * @brief Trade clock deviation tolerance for higher baudrate. Allow clock to reach FCLK/8 instead of FCLK/16.
@@ -361,14 +496,28 @@ bool HardUsart::has_parity_error() const noexcept
 }
 void HardUsart::raise_if_error() const
 {
+    if (!(reg.SR & (USART_SR_NE | USART_SR_PE | USART_SR_FE | USART_SR_ORE)))
+        return;
     if (reg.SR & USART_SR_NE && !suppress_noise_error)
+    {
+        reg.SR &= ~USART_SR_NE;
         throw NoiseError();
+    }
     if (reg.SR & USART_SR_PE && !suppress_parity_error)
+    {
+        reg.SR &= ~USART_SR_PE;
         throw ParityError();
+    }
     if (reg.SR & USART_SR_FE)
+    {
+        reg.SR &= ~USART_SR_FE;
         throw FramingError();
+    }
     if (reg.SR & USART_SR_ORE && !suppress_overrun_error)
+    {
+        reg.SR &= ~USART_SR_ORE;
         throw OverrunError();
+    }
 }
 void HardUsart::set_transmitter(bool on) const noexcept
 {

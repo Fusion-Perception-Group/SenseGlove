@@ -5,7 +5,9 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
-#include <span>
+#include <iterator>
+#include <concepts>
+#include <ranges>
 #include "property.hpp"
 #include "userconfig.hpp"
 #include "nvic.hpp"
@@ -118,33 +120,75 @@ public:
     virtual void set_word_length(WordLength word_length) = 0;
     virtual WordLength get_word_length() const noexcept = 0;
     virtual void break_transmission() = 0;
-    virtual size_t write(const void *data, size_t size) = 0;
-    virtual size_t read(void *data, size_t size) = 0;
-    virtual size_t write(std::string_view sv)
+    virtual size_t exchange_bytes(const void * send, size_t send_size, void * recv, size_t recv_size) = 0;
+    size_t write_bytes(const void *data, size_t size)
     {
-        return write(reinterpret_cast<const uint8_t*>(sv.data()), sv.size());
+        return exchange_bytes(data, size, nullptr, 0);
+    }
+    size_t write(std::string_view sv)
+    {
+        return write_bytes(sv.data(), sv.size());
+    }
+    size_t read_bytes(void *data, size_t size)
+    {
+        return exchange_bytes(nullptr, 0, data, size);
     }
     template<typename T>
     void put(const T &data) requires(std::is_trivially_copyable_v<T>)
     {
-        write(&data, sizeof(T));
+        write_bytes(&data, sizeof(T));
     }
     template<typename T>
     T get() requires(std::is_trivially_copyable_v<T>)
     {
         T data;
-        read(&data, sizeof(T));
+        read_bytes(&data, sizeof(T));
         return data;
     }
     template<typename T>
-    size_t write(std::span<T> data) requires(std::is_trivially_copyable_v<T>)
+    T& get(T& data) requires(std::is_trivially_copyable_v<T>)
     {
-        return write(data.data(), data.size_bytes());
+        read_bytes(&data, sizeof(T));
+        return data;
     }
-    template<typename T>
-    size_t read(std::span<T> data) requires(std::is_trivially_copyable_v<T>)
+    template <std::input_iterator Iter_t, std::sentinel_for<Iter_t> Senti_t>
+    size_t write(Iter_t begin, Senti_t end)
     {
-        return read(data.data(), data.size_bytes()) / sizeof(T);
+        size_t count = 0;
+        size_t unit_bytes = sizeof(typename std::iterator_traits<Iter_t>::value_type);
+        while (begin != end)
+        {
+            put(*begin++);
+            count += unit_bytes;
+        }
+        return count;
+    }
+    template <std::ranges::input_range Range_t>
+    size_t write(const Range_t & range)
+    {
+        return write(std::ranges::begin(range), std::ranges::end(range));
+    }
+
+    template <typename Iter_t, typename Senti_t>
+    requires std::sentinel_for<Senti_t, Iter_t> &&
+             std::output_iterator<Iter_t, typename std::iterator_traits<Iter_t>::value_type>
+    size_t read(Iter_t begin, Senti_t end) const
+    {
+        size_t count=0;
+        size_t unit_bytes = sizeof(typename std::iterator_traits<Iter_t>::value_type);
+        while (begin != end)
+        {
+            *begin = get<typename std::iterator_traits<Iter_t>::value_type>();
+            ++begin;
+            count += unit_bytes;
+        }
+        return count;
+    }
+    template <typename Range_t>
+    requires std::ranges::output_range<Range_t, typename std::ranges::range_value_t<Range_t>>
+    size_t read(Range_t && range) const
+    {
+        return read(std::ranges::begin(range), std::ranges::end(range));
     }
 
 };
@@ -214,12 +258,13 @@ public:
     void set_word_length(WordLength word_length) noexcept override;
     WordLength get_word_length() const noexcept override;
     void break_transmission() noexcept override;
-    size_t write(const void *data, size_t size) noexcept override;
-    size_t write(std::string_view sv) noexcept override
-    {
-        return write(reinterpret_cast<const uint8_t*>(sv.data()), sv.size());
-    }
-    size_t read(void *data, size_t size) noexcept override;
+    size_t exchange_bytes(const void * send, size_t send_size, void * recv, size_t recv_size) override;
+    // size_t write(const void *data, size_t size) override;
+    // size_t write(std::string_view sv) override
+    // {
+    //     return write(reinterpret_cast<const uint8_t*>(sv.data()), sv.size());
+    // }
+    // size_t read(void *data, size_t size) override;
 
     /**
      * @brief Trade clock deviation tolerance for higher baudrate. Allow clock to reach FCLK/8 instead of FCLK/16.

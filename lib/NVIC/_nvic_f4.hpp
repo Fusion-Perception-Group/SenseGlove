@@ -79,7 +79,8 @@ enum IRQn_Type : int16_t
   I2C3_EV_IRQn = 72,            /*!< I2C3 event interrupt                                              */
   I2C3_ER_IRQn = 73,            /*!< I2C3 error interrupt                                              */
   FPU_IRQn = 81,                /*!< FPU global interrupt                                              */
-  SPI4_IRQn = 84                /*!< SPI4 global Interrupt                                             */
+  SPI4_IRQn = 84,               /*!< SPI4 global Interrupt                                             */
+  SPI5_IRQn = 85,               /*!< SPI5 global Interrupt                                             */
 };
 
 }
