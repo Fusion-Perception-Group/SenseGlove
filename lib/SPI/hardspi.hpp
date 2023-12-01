@@ -75,7 +75,7 @@ namespace spi
         bool is_slave() const noexcept override final;
         void set_mode(Mode mode) override final;
         Mode get_mode() const noexcept override final;
-        size_t exchange_bytes(void *tx, void *rx, size_t size) override final;
+        size_t exchange_bytes(const void *tx, void *rx, size_t size) override final;
         void select_as_slave(bool yes) override;
         bool is_selected_as_slave() const noexcept override;
         void raise_if_error() const override final;
@@ -89,7 +89,7 @@ namespace spi
         void set_msb_first(bool yes);
         bool is_msb_first() const noexcept;
 
-        void config_half_duplex(bool enable, bool bidirectional=false, bool rxonly=false);
+        void config_half_duplex(bool bidirectional=false, bool rxonly=false);
         bool is_half_duplex() const noexcept;
         bool is_bidirectional() const noexcept;
         bool is_rxonly() const noexcept;
@@ -129,6 +129,7 @@ extern HardwareInterface Spi3;
 extern HardwareInterface Spi4;
 extern HardwareInterface Spi5;
 extern HardwareInterface Spi6;
+uint32_t test();
 
 }
 }

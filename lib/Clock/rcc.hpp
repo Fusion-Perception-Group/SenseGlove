@@ -84,6 +84,7 @@ void reset(const spi::HardwareInterface& spi) noexcept;
 
 uint32_t get_pclk1() noexcept;
 uint32_t get_pclk2() noexcept;
+uint32_t get_hclk() noexcept;
 
 [[noreturn]] void reset_system() noexcept;
 void reset_backup_domain() noexcept;

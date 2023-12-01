@@ -31,6 +31,10 @@ uint32_t get_pclk2() noexcept
 {
     return HAL_RCC_GetPCLK2Freq();
 }
+uint32_t get_hclk() noexcept
+{
+    return HAL_RCC_GetHCLKFreq();
+}
 
 weak [[noreturn]] void reset_system() noexcept
 {

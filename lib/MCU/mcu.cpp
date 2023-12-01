@@ -10,10 +10,16 @@ namespace stm32
 namespace mcu
 {
 
-weak void init()
+void default_init()
 {
     flash::enable_prefetch();
     nvic::set_priority_group(nvic::Pre2_Sub2);
+    clock::init_systick();
+}
+
+weak void init()
+{
+    default_init();
 }
 
 }

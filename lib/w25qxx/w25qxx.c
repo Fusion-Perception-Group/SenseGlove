@@ -127,6 +127,7 @@ void W25qxx_WaitForWriteEnd(void)
 //###################################################################################################################
 bool W25qxx_Init(void)
 {
+	HAL_SPI_Init(&_W25QXX_SPI);
 	w25qxx.Lock = 1;
 	while (HAL_GetTick() < 100)
 		W25qxx_Delay(1);

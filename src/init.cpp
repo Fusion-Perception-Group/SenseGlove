@@ -49,17 +49,14 @@ int sysclk_config()
   return 0;
 }
 
-extern "C" void SysTick_Handler()
-{
-    //HAL_IncTick();
-}
-
 void init()
 {
-    if(HAL_Init() or sysclk_config())
+    mcu::default_init();
+    if(sysclk_config())
     {
-        throw std::runtime_error("HAL init failed");
+       throw std::runtime_error("HAL init failed");
     }
+    clock::init_systick();  // sysclk_config() overwrites systick config
 }
 
 }

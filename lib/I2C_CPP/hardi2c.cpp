@@ -124,7 +124,7 @@ void HardMaster::set_speed(Speed speed)
         case Speed::Standard:
             _speed = Speed::Standard;
             reg.CCR &= ~I2C_CCR_FS;
-            clock_speed = 100_KHz;
+            clock_speed = 200_KHz;
             break;
         case Speed::Fast:
             _speed = Speed::Fast;

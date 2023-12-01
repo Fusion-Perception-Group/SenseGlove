@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <exception>
+#include <functional>
 
 namespace vermils
 {
@@ -23,6 +25,17 @@ namespace clock
     {
         return mhz * 1000000;
     }
+
+    class TimeoutError : public std::exception
+    {
+    public:
+        const char *what() const noexcept override
+        {
+            return "Timeout";
+        }
+    };
+
+    inline std::function<void()> on_systick;
 }
 using clock::SystemCoreClock;
 }

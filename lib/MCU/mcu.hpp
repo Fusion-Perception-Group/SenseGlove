@@ -32,6 +32,7 @@ constexpr const std::string_view modelname = ModelName;
  * @throw std::runtime_error if init failed
  */
 void init();
+void default_init();
 
 }
 }

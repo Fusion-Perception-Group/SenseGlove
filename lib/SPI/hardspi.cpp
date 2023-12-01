@@ -34,18 +34,47 @@ namespace spi
 uint32_t HardwareInterface::_BaudRate::getter() const
 {
     uint8_t pres = ((owner.reg.CR1 & SPI_CR1_BR) >> 3U)+1U;
-    return clock::rcc::get_pclk2() >> pres;
+    switch (owner.order)
+    {
+        case 1:
+        case 2:
+            return clock::rcc::get_pclk1() >> pres;
+        case 0:
+        case 3:
+        case 4:
+        case 5:
+            return clock::rcc::get_pclk2() >> pres;
+        default:
+            return clock::rcc::get_pclk1() >> pres;
+    }
 }
 void HardwareInterface::_BaudRate::setter(uint32_t baud) const
 {
     uint8_t pres = 0;
-    uint32_t pclk = clock::rcc::get_pclk2();
+    uint32_t pclk = 0;
+    switch (owner.order)
+    {
+        case 1:
+            pclk = clock::rcc::get_pclk1();
+            break;
+        case 0:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+            pclk = clock::rcc::get_pclk2();
+            break;
+        default:
+            pclk = clock::rcc::get_pclk1();
+    }
     while (pclk > baud)
     {
         pclk >>= 1U;
         ++pres;
     }
-    owner.reg.CR1 = (owner.reg.CR1 & ~SPI_CR1_BR) | ((pres-1U) << 3U);
+    --pres;
+    pres = (pres > 7) ? 7 : pres;
+    owner.reg.CR1 = (owner.reg.CR1 & ~SPI_CR1_BR) | (pres << 3U);
 }
 void HardwareInterface::turn_slave(bool yes) noexcept
 {
@@ -55,7 +84,7 @@ void HardwareInterface::turn_slave(bool yes) noexcept
     }
     else
     {
-        reg.CR1 |= SPI_CR1_MSTR;
+        reg.CR1 |= SPI_CR1_MSTR | SPI_CR1_SSI;
     }
 }
 bool HardwareInterface::is_slave() const noexcept
@@ -70,118 +99,90 @@ Mode HardwareInterface::get_mode() const noexcept
 {
     return (Mode)(reg.CR1 & (SPI_CR1_CPHA | SPI_CR1_CPOL));
 }
-size_t HardwareInterface::exchange_bytes(void *tx, void *rx, size_t size)
+size_t HardwareInterface::exchange_bytes(const void *tx, void *rx, size_t size)
 {
-    size_t count=0;
+    #define __SPI_WAIT_FOR(X)\
+        do\
+        {\
+            auto checker = clock::make_timeout(10ms);\
+            do\
+            {\
+                raise_if_error();\
+                checker.raise_if_timedout<Timeout>();\
+            }\
+            while (not (X));\
+        } while (0)
+
+    const size_t original_size = size;
     uint8_t *tx8 = (uint8_t*)tx, *rx8 = (uint8_t*)rx;
     uint16_t *tx16 = (uint16_t*)tx, *rx16 = (uint16_t*)rx;
-
     const bool use_16bits = is_using_16bits();
-    const bool readonly = (tx == nullptr)
-                            or (is_half_duplex() 
-                                and (
-                                    (is_rxonly()
-                                    or (is_bidirectional()
-                                        and not(reg.CR1 & SPI_CR1_BIDIOE)))));
-    const bool writeonly = (rx == nullptr) or (is_half_duplex() and (is_bidirectional() and (reg.CR1 & SPI_CR1_BIDIOE)));
+    const bool readonly = (tx == nullptr);
+    const bool writeonly = (rx == nullptr);
+    const bool bidir = is_bidirectional();
     if (readonly and writeonly)
-        return count;  // are you kidding me?
+        return 0;  // are you kidding me?
     
-    while (reg.SR & SPI_SR_BSY)
-        raise_if_error();
+    __SPI_WAIT_FOR(not (reg.SR & SPI_SR_BSY));
 
-    if (not readonly and not writeonly)
+    while (size)
     {
-        while (count < size)
-        {
-            while (not (reg.SR & SPI_SR_TXE))
-                raise_if_error();
-            if (use_16bits)
-            {
-                reg.DR = *tx16++;
-            }
-            else
-            {
-                reg.DR = *tx8++;
-            }
 
-            while (not (reg.SR & SPI_SR_RXNE))
-                raise_if_error();
-            if (use_16bits)
-            {
-                *rx16++ = reg.DR;
-                ++count;
-            }
-            else
-            {
-                *rx8++ = reg.DR;
-            }
-            ++count;
+        __SPI_WAIT_FOR(reg.SR & SPI_SR_TXE);
+        if (bidir)
+            reg.CR1 &= ~SPI_CR1_BIDIOE;
+        if (readonly)
+        {
+            reg.DR = 0xFFFF;
+        }
+        else if (use_16bits)
+        {
+            reg.DR = *tx16++;
+        }
+        else
+        {
+            reg.DR = *tx8++;
         }
 
-    }
-    else if (writeonly)
-    {
-        while (count < size)
-        {
-            while (not (reg.SR & SPI_SR_TXE))
-                raise_if_error();
-            if (use_16bits)
-            {
-                reg.DR = *tx16++;
-                ++count;
-            }
-            else
-            {
-                reg.DR = *tx8++;
-            }
-            ++count;
-        }
-        while (not (reg.SR & SPI_SR_TXE))
-            raise_if_error();
-    }
-    else // writeonly
-    {
-        while (count < size)
-        {
-            while (reg.SR & SPI_SR_BSY)
-                raise_if_error();
-            reg.DR = 0;
+        __SPI_WAIT_FOR(reg.SR & SPI_SR_RXNE);
 
-            while (not (reg.SR & SPI_SR_RXNE))
-                raise_if_error();
-            if (use_16bits)
-            {
-                *rx16++ = reg.DR;
-                ++count;
-            }
-            else
-            {
-                *rx8++ = reg.DR;
-            }
-            ++count;
-        }
-    }
+        if (bidir)
+            reg.CR1 &= ~SPI_CR1_BIDIOE;
 
-    while (reg.SR & SPI_SR_BSY)
-        raise_if_error();
+        if (writeonly)
+        {
+            [[maybe_unused]]volatile uint32_t dummy = reg.DR;
+        }
+        else if (use_16bits)
+        {
+            *rx16++ = reg.DR;
+        }
+        else
+        {
+            *rx8++ = reg.DR;
+        }
+
+        size -= 1 + use_16bits;
+    }
+    __SPI_WAIT_FOR(not (reg.SR & SPI_SR_BSY));
     
-    return count;
+    return original_size;
 }
 
 void HardwareInterface::init()
 {
     clock::rcc::enable_clock(*this);
     reg.CR1 &= ~SPI_CR1_SPE;
-    set_mode(Mode::Mode1);
+    set_mode(Mode::Mode0);
     turn_slave(false);
-    baudrate = 5_MHz; // 5 Mbits/s
+    baudrate = 6_MHz; // 6 Mbits/s
+    use_software_ss(true);
     set_msb_first(true);
-    config_half_duplex(false);
+    config_half_duplex(false, false);
     use_16bits(false);
+    reg.CR2 = 0;
 
     reg.CR1 |= SPI_CR1_SPE;
-    reg.CR2 = 0;
 }
 void HardwareInterface::deinit()
 {
@@ -256,27 +257,19 @@ bool HardwareInterface::is_msb_first() const noexcept
     return !(reg.CR1 & SPI_CR1_LSBFIRST);
 }
 
-void HardwareInterface::config_half_duplex(bool enable, bool bidirectional, bool rxonly)
+void HardwareInterface::config_half_duplex(bool bidirectional, bool rxonly)
 {
-    if (enable)
+    if (bidirectional and rxonly)
+        throw std::invalid_argument("Cannot be bidirectional and rxonly at the same time");
+
+    if (bidirectional)
     {
         reg.CR1 |= SPI_CR1_BIDIMODE;
-        if (rxonly)
-        {
-            reg.CR1 |= SPI_CR1_RXONLY;
-        }
-        else
-        {
-            reg.CR1 &= ~SPI_CR1_RXONLY;
-        }
-        if (bidirectional)
-        {
-            reg.CR1 |= SPI_CR1_BIDIOE;
-        }
-        else
-        {
-            reg.CR1 &= ~SPI_CR1_BIDIOE;
-        }
+    }
+    else if (rxonly)
+    {
+        reg.CR1 |= SPI_CR1_RXONLY;
+        reg.CR1 &= ~SPI_CR1_BIDIMODE;
     }
     else
     {
@@ -285,7 +278,7 @@ void HardwareInterface::config_half_duplex(bool enable, bool bidirectional, bool
 }
 bool HardwareInterface::is_half_duplex() const noexcept
 {
-    return reg.CR1 & SPI_CR1_BIDIMODE;
+    return is_bidirectional() or is_rxonly();
 }
 bool HardwareInterface::is_bidirectional() const noexcept
 {
@@ -298,34 +291,35 @@ bool HardwareInterface::is_rxonly() const noexcept
 
 void HardwareInterface::raise_if_error() const
 {
-    if (not (reg.SR & (SPI_SR_CRCERR | SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR | SPI_SR_FRE)))
+    uint32_t sr = reg.SR;
+    if (not (sr & (SPI_SR_CRCERR | SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR | SPI_SR_FRE)))
         return;
 
     [[maybe_unused]]volatile uint32_t dummy;
 
-    if (reg.SR & SPI_SR_CRCERR)
+    if (sr & SPI_SR_CRCERR)
     {
         reg.SR &= ~SPI_SR_CRCERR;
         throw CRCError();
     }
-    if (reg.SR & SPI_SR_OVR)
+    if (sr & SPI_SR_OVR)
     {
         dummy = reg.DR;
         dummy = reg.SR;  // clear OVR flag
         throw Overrun();
     }
-    if (reg.SR & SPI_SR_MODF)
+    if (sr & SPI_SR_MODF)
     {
         dummy = reg.SR;
         reg.CR1 = reg.CR1;  // clear MODF flag
         throw SPIException("SPI Master Mode fault");
     }
-    if (reg.SR & SPI_SR_UDR)
+    if (sr & SPI_SR_UDR)
     {
         dummy = reg.SR;  // clear UDR flag
         throw Underrun();
     }
-    if (reg.SR & SPI_SR_FRE)
+    if (sr & SPI_SR_FRE)
     {
         dummy = reg.SR;  // clear TIFRFE flag
         throw TIFrameError();
@@ -455,6 +449,28 @@ extern "C"
     #endif
 }
 
+uint32_t test()
+{
+    SPI_HandleTypeDef hspi{
+        .Instance = SPI1,
+        .Init{
+            .Direction = SPI_DIRECTION_2LINES,
+            .CLKPolarity = SPI_POLARITY_LOW,
+            .CLKPhase = SPI_PHASE_1EDGE,
+            .NSS = SPI_NSS_SOFT,
+            .BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2,
+            .FirstBit = SPI_FIRSTBIT_MSB,
+            .TIMode = SPI_TIMODE_DISABLE,
+            .CRCCalculation = SPI_CRCCALCULATION_DISABLE,
+        }
+    };
+    HAL_SPI_Init(&hspi);
+
+    [[maybe_unused]]uint8_t tx[10], rx[10];
+    tx[0] = 0x9f;
+    HAL_SPI_TransmitReceive(&hspi, tx, rx, 1, 1000);
+    return rx[0];
+}
 
 }
 }

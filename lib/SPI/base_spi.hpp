@@ -8,6 +8,7 @@
 #include <functional>
 #include <utility>
 #include "userconfig.hpp"
+#include "clock.hpp"
 
 namespace vermils
 {
@@ -19,6 +20,7 @@ namespace spi
 
     enum class Mode : uint8_t
     {
+        Mode0=0,
         Mode1=1,
         Mode2=2,
         Mode3=3,
@@ -60,6 +62,12 @@ namespace spi
         Underrun() : I2SException("Overrun/Underrun in TI/I2S transmission") {}
     };
 
+    class Timeout : public SPIException, public clock::TimeoutError
+    {
+    public:
+        Timeout() : SPIException("Timeout in SPI transmission") {}
+    };
+
     class BaseInterface
     {
     public:
@@ -67,11 +75,11 @@ namespace spi
         virtual bool is_slave() const = 0;
         virtual void set_mode(Mode mode) = 0;
         virtual Mode get_mode() const = 0;
-        virtual size_t exchange_bytes(void *tx, void *rx, size_t size) = 0;
+        virtual size_t exchange_bytes(const void *tx, void *rx, size_t size) = 0;
         virtual void raise_if_error() const = 0;
         virtual void select_as_slave(bool yes) = 0;
         virtual bool is_selected_as_slave() const noexcept = 0;
-        size_t write_bytes(void *tx, size_t size)
+        size_t write_bytes(const void *tx, size_t size)
         {
             return exchange_bytes(tx, nullptr, size);
         }
@@ -99,7 +107,7 @@ namespace spi
             return data;
         }
         template<typename T>
-        T& replace(T &data) requires(std::is_trivially_copyable_v<T>)
+        T& swap(T &data) requires(std::is_trivially_copyable_v<T>)
         {
             exchange_bytes(&data, &data, sizeof(T));
             return data;

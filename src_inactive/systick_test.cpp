@@ -70,6 +70,18 @@ int main()
         [[maybe_unused]]auto &hardi2c = i2c::I2c1;
         auto &spi = spi::Spi1;
         spi.init();
+        while(true)
+        {
+            uint32_t last = clock::get_systick_ms();
+            uint32_t hal_last = HAL_GetTick();
+            timer.delay_ms(1000);
+            usrt.write(ffmt::format("hal ticks {}\n", HAL_GetTick()-hal_last));
+            usrt.write(ffmt::format("{}ms\n", (clock::get_systick_ms() - last)));
+            usrt.write(ffmt::format("ticks {}\n", clock::get_systick()));
+             usrt.write(ffmt::format("clock speed {}Mhz\n", clock::SystemCoreClock/1_MHz));
+            // usrt.write(ffmt::format("VAL {}\n", SysTick->VAL&0xFFFFFF));
+            // usrt.write(ffmt::format("LOAD {}\n", SysTick->LOAD&0xFFFFFF));
+        }
         //spi.baudrate = 5_MHz;
         //hardi2c.set_speed(i2c::Speed::FastPlus);
         // usrt.write(ffmt::format("Clock speed: {}KHz\n", hardi2c.clock_speed()/1_KHz));
@@ -80,14 +92,8 @@ int main()
         uint32_t id;
         //id = spi::test();
         usrt.write(ffmt::format("baudrate: {}MHz\n", spi.baudrate/1_MHz));
-        clock::delay(1s);
         spi.put<uint8_t>(0x9F);
         uint8_t manu = spi.get<uint8_t>();
-        id = spi.get<uint8_t>() << 8;
-        id |= spi.get<uint8_t>();
-        usrt.write(ffmt::format("Made by {:.x} ID: {:.x}\n", manu, id));
-        spi.put<uint8_t>(0x9F);
-        manu = spi.get<uint8_t>();
         id = spi.get<uint8_t>() << 8;
         id |= spi.get<uint8_t>();
         usrt.write(ffmt::format("Made by {:.x} ID: {:.x}\n", manu, id));
@@ -102,6 +108,6 @@ int main()
     while (ret)
     {
         led.toggle();
-        clock::delay(1s);
+        timer.delay_ms(1000);
     }
 }
