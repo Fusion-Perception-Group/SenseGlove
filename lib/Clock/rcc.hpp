@@ -46,6 +46,10 @@ namespace spi
 {
     class HardwareInterface;
 }
+namespace wdg
+{
+class WindowWatchDog;
+}
 
 
 namespace clock
@@ -64,6 +68,9 @@ void enable_clock(const tim::BasicTimer& tim) noexcept;
 void enable_clock(const usart::HardUsart& usart) noexcept;
 void enable_clock(const i2c::HardMaster& i2c) noexcept;
 void enable_clock(const spi::HardwareInterface& spi) noexcept;
+void enable_clock(const wdg::WindowWatchDog& wwdg) noexcept;
+void enable_pwr_clock() noexcept;
+void enable_rtc_clock() noexcept;
 
 void disable_clock(const gpio::hidden::_Port& port) noexcept;
 void disable_clock(const adc::RegularADC& adc) noexcept;
@@ -72,6 +79,9 @@ void disable_clock(const tim::BasicTimer& tim) noexcept;
 void disable_clock(const usart::HardUsart& usart) noexcept;
 void disable_clock(const i2c::HardMaster& i2c) noexcept;
 void disable_clock(const spi::HardwareInterface& spi) noexcept;
+void disable_clock(const wdg::WindowWatchDog& wwdg) noexcept;
+void disable_pwr_clock() noexcept;
+void disable_rtc_clock() noexcept;
 
 void reset(const gpio::hidden::_Port& port) noexcept;
 void reset(const adc::RegularADC& adc) noexcept;
@@ -81,10 +91,16 @@ void reset(const flash::EmbeddedFlash& flash) noexcept;
 void reset(const usart::HardUsart& usart) noexcept;
 void reset(const i2c::HardMaster& i2c) noexcept;
 void reset(const spi::HardwareInterface& spi) noexcept;
+void reset(const wdg::WindowWatchDog& wwdg) noexcept;
+void reset_pwr() noexcept;
 
 uint32_t get_pclk1() noexcept;
 uint32_t get_pclk2() noexcept;
 uint32_t get_hclk() noexcept;
+constexpr uint32_t get_lsi_clock() noexcept
+{
+    return 40_KHz;
+}
 
 [[noreturn]] void reset_system() noexcept;
 void reset_backup_domain() noexcept;

@@ -10,11 +10,11 @@ namespace stm32
 namespace clock
 {
 uint32_t & SystemCoreClock = ::SystemCoreClock;
-static uint_fast64_t ticks_high=0;
+static volatile uint_fast64_t ticks_high=0;
 
 static void increase_tick()
 {
-    ticks_high += 1U + SysTick_LOAD_RELOAD_Msk;
+    ticks_high = ticks_high + 1U + SysTick_LOAD_RELOAD_Msk;
 }
 
 void init_systick() noexcept

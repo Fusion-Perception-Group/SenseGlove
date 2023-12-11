@@ -6,10 +6,11 @@
 #include <functional>
 #include <chrono>
 #include <type_traits>
+#include "property.hpp"
 #include "clock_shared.hpp"
 #include "rcc.hpp"
 #include "tim.hpp"
-#include "property.hpp"
+#include "rtc.hpp"
 
 namespace vermils
 {

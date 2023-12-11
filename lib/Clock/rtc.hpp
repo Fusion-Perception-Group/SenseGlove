@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <chrono>
 #include "userconfig.hpp"
 #include "clock_shared.hpp"
+#include "power.hpp"
 
 namespace vermils
 {
@@ -12,6 +14,7 @@ namespace clock
 {
 namespace rtc
 {
+using power::set_backup_protection;
     namespace detail
     {
         struct Register
@@ -123,8 +126,45 @@ namespace rtc
             volatile uint32_t BKP31R;     /*!< RTC backup register 31,                                    Address offset: 0xCC */
             #endif
         };
-        Register & reg;
+        extern Register & reg;
     }
+
+enum class ClockSource
+{
+    None = 0,
+    LSE,
+    LSI,
+    HSE
+};
+
+void init() noexcept;
+
+inline void deinit() noexcept
+{
+    set_backup_protection(false);
+    clock::rcc::disable_rtc_clock();
+    set_backup_protection(true);
+    power::deinit();
+}
+
+inline void unlock() noexcept
+{
+    #if defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32HX)
+    detail::reg.WPR = 0xCA;
+    detail::reg.WPR = 0x53;
+    #endif
+}
+
+inline void lock() noexcept
+{
+    #if defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32HX)
+    detail::reg.WPR = 0xFF;
+    #endif
+}
+
+void set_clock_source(ClockSource source) noexcept;
+ClockSource get_clock_source() noexcept;
+
 }
 }
 }

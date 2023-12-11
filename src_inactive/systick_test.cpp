@@ -38,8 +38,6 @@ int main()
 
     nvic::set_priority_group(nvic::Pre2_Sub2);
 
-    auto hires_clk = std::chrono::high_resolution_clock();
-    [[maybe_unused]]auto now = hires_clk.now();
     auto &usrt = usart::Usart1;
     [[maybe_unused]]uintptr_t addr = 0x0807000B;
     Pin tx(PortA, 9), rx(PortA, 10);
@@ -74,11 +72,11 @@ int main()
         {
             uint32_t last = clock::get_systick_ms();
             uint32_t hal_last = HAL_GetTick();
-            timer.delay_ms(1000);
+            clock::delay(1s);
             usrt.write(ffmt::format("hal ticks {}\n", HAL_GetTick()-hal_last));
             usrt.write(ffmt::format("{}ms\n", (clock::get_systick_ms() - last)));
             usrt.write(ffmt::format("ticks {}\n", clock::get_systick()));
-             usrt.write(ffmt::format("clock speed {}Mhz\n", clock::SystemCoreClock/1_MHz));
+            usrt.write(ffmt::format("clock speed {}Mhz\n", clock::SystemCoreClock/1_MHz));
             // usrt.write(ffmt::format("VAL {}\n", SysTick->VAL&0xFFFFFF));
             // usrt.write(ffmt::format("LOAD {}\n", SysTick->LOAD&0xFFFFFF));
         }

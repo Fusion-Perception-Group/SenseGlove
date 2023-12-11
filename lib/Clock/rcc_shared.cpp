@@ -10,6 +10,7 @@
 #include "spi.hpp"
 #include "time.hpp"
 #include "trace.hpp"
+#include "wdg.hpp"
 #include "macro.h"
 
 #define weak __attribute__((weak))
@@ -296,7 +297,24 @@ weak void enable_clock(const spi::HardwareInterface& spi) noexcept
         break;
     }
 }
-
+weak void enable_clock(const wdg::WindowWatchDog& wwdg) noexcept
+{
+    #ifdef __HAL_RCC_WWDG_CLK_ENABLE
+    __HAL_RCC_WWDG_CLK_ENABLE();
+    #endif
+}
+weak void enable_pwr_clock() noexcept
+{
+    #ifdef __HAL_RCC_PWR_CLK_ENABLE
+    __HAL_RCC_PWR_CLK_ENABLE();
+    #endif
+}
+weak void enable_rtc_clock() noexcept
+{
+    #ifdef __HAL_RCC_RTC_ENABLE
+    __HAL_RCC_RTC_ENABLE();
+    #endif
+}
 
 
 weak void disable_clock(const gpio::hidden::_Port& port) noexcept
@@ -546,6 +564,25 @@ weak void disable_clock(const spi::HardwareInterface& spi) noexcept
         break;
     }
 }
+weak void disable_clock(const wdg::WindowWatchDog& wwdg) noexcept
+{
+    #ifdef __HAL_RCC_WWDG_CLK_DISABLE
+    __HAL_RCC_WWDG_CLK_DISABLE();
+    #endif
+}
+weak void disable_pwr_clock() noexcept
+{
+    #ifdef __HAL_RCC_PWR_CLK_DISABLE
+    __HAL_RCC_PWR_CLK_DISABLE();
+    #endif
+}
+weak void disable_rtc_clock() noexcept
+{
+    #ifdef __HAL_RCC_RTC_DISABLE
+    __HAL_RCC_RTC_DISABLE();
+    #endif
+}
+
 
 weak void reset(const gpio::hidden::_Port& port) noexcept
 {
@@ -878,7 +915,20 @@ weak void reset(const spi::HardwareInterface& spi) noexcept
         break;
     }
 }
-
+weak void reset(const wdg::WindowWatchDog& wwdg) noexcept
+{
+    #ifdef __HAL_RCC_WWDG_FORCE_RESET
+    __HAL_RCC_WWDG_FORCE_RESET();
+    __HAL_RCC_WWDG_RELEASE_RESET();
+    #endif
+}
+weak void reset_pwr() noexcept
+{
+    #ifdef __HAL_RCC_PWR_FORCE_RESET
+    __HAL_RCC_PWR_FORCE_RESET();
+    __HAL_RCC_PWR_RELEASE_RESET();
+    #endif
+}
 
 }
 }
