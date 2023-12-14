@@ -994,6 +994,7 @@ bool draw_filled_polygon(Canvas canvas, const unsigned points[][2], unsigned num
 {
     if (num_points < 2)
         return false;
+    return true;
 }
 
 bool fill_block(Canvas canvas, unsigned x, unsigned y, bool value)

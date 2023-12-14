@@ -54,7 +54,6 @@ void init() noexcept
     set_backup_protection(false);
     clock::rcc::enable_rtc_clock();
     set_backup_protection(true);
-    HAL_RTC_Init(&rtc_handle);
 }
 
 void set_clock_source(ClockSource source) noexcept

@@ -153,7 +153,7 @@ bool select_10b_I2C(I2C_t *i2c, uint16_t address, const bool read)
         ack = wbyte_I2C(i2c, address & 0xFF);
         if (ack && read)
         {
-            _starrt_I2C(i2c);
+            _start_I2C(i2c);
             ack = wbyte_I2C(i2c, ((address & 0xc000)>> 5) | 0xF000 | read);
         }
     }

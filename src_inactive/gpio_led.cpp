@@ -34,13 +34,8 @@ int main()
     while (true)
     {
         led.set();
-        timer.delay(1ms);
+        timer.delay(100ms);
         led.reset();
-        timer.delay(500ns);
+        timer.delay(200ms);
     }
-}
-
-extern "C" void SysTick_Handler()
-{
-    HAL_IncTick();
 }

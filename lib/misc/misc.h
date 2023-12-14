@@ -77,13 +77,6 @@ typedef enum num_type_t_proto
 //Functions
 const char *getSysArch();
 const char *getSysOS();
-char *base64(const void *item,const size_t size);
-sort_t *hybridSort(sort_t *base, size_t nmemb,  const unsigned MAX_RAM_MB);
-sort_t *quickSort(sort_t *base, size_t nmemb);
-sort_t *r_quickSort(sort_t *base, const size_t nmemb);//recursive implementation
-sort_t *radixSort(sort_t *base, const size_t nmemb);
-sort_t *radixSort_32(sort_t *base, const size_t nmemb);
-void *partial_rsortX(void *base, const size_t nmemb,void *aux, const size_t size, const num_type_t type);//type: 0->unsigned 1->signed 2->float
 
 //inline funtions
 static inline bool getSysEndian()//returns 1 for little endian, 0 for big endian

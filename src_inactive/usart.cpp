@@ -60,8 +60,7 @@ int main()
     {
         uintptr_t addr = 0x0807000B;
         Pin tx(PortA, 9), rx(PortA, 10);
-        PinConfig cfg(PinConfig::AF, PinConfig::VeryHigh, PinConfig::PushPull);
-        cfg.alternate = 7;
+        PinConfig cfg(PinConfig::AF, PinConfig::VeryHigh, PinConfig::PushPull, 7);
         tx.load(cfg);
         rx.load(cfg);
 

@@ -12,7 +12,7 @@ extern "C"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <math.h>
-#include "misc.h"
+#include "macro.h"
 #include "I2C.h"
 #include "font_8x8.h"
 #include "SSD1306_CMD.h"

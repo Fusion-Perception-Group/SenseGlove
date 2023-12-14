@@ -4,7 +4,6 @@
 #include "I2C.h"
 #include "CLK_CFG.h"
 #include "SSD1306.h"
-#include "w25qxx.h"
 
 #define OLED_SDA GPIO_PIN_7
 #define OLED_SCL GPIO_PIN_6
@@ -62,8 +61,8 @@ ADC_HandleTypeDef adc1 = {
     }
 };
 
-TIM_HandleTypeDef tim1 = {
-    .Instance = TIM1,
+TIM_HandleTypeDef tim = {
+    .Instance = TIM3,
     .Init = {
         .Prescaler = 99,
         .CounterMode = TIM_COUNTERMODE_CENTERALIGNED1,
@@ -81,7 +80,7 @@ int main()
     SystemClock_Config();
     __HAL_RCC_ADC1_CLK_ENABLE();
     __HAL_RCC_SPI1_CLK_ENABLE();
-    __HAL_RCC_TIM1_CLK_ENABLE();
+    __HAL_RCC_TIM3_CLK_ENABLE();
     enable_GPIO_CLK(FLEX_PORT);
     enable_GPIO_CLK(GPIOB);
     init_GPIO(FLEX_PORT,
@@ -125,23 +124,18 @@ int main()
     uint16_t result = 0;
     //uint8_t data=0;
 
-    HAL_SPI_Init(&spi1);
-    W25qxx_Init();
-    //W25qxx_EraseChip();
-    //W25qxx_WriteByte(0xaf, 0x00);
-    //W25qxx_ReadByte(&data, 0x00);
 
     unsigned duty = 500;//1000;
     TIM_ClockConfigTypeDef ClockSourceConfig = {0};
     TIM_MasterConfigTypeDef MasterConfig = {0};
     TIM_OC_InitTypeDef ConfigOC = {0};
-    HAL_TIM_Base_Init(&tim1);
-    HAL_TIM_PWM_Init(&tim1);
+    HAL_TIM_Base_Init(&tim);
+    HAL_TIM_PWM_Init(&tim);
     ClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-    HAL_TIM_ConfigClockSource(&tim1, &ClockSourceConfig);
+    HAL_TIM_ConfigClockSource(&tim, &ClockSourceConfig);
     MasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
     MasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-    HAL_TIMEx_MasterConfigSynchronization(&tim1, &MasterConfig);
+    HAL_TIMEx_MasterConfigSynchronization(&tim, &MasterConfig);
     ConfigOC.OCMode = TIM_OCMODE_PWM1;
     ConfigOC.Pulse = duty;
     ConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
@@ -149,21 +143,21 @@ int main()
     ConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
     ConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
     ConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-    HAL_TIM_PWM_ConfigChannel(&tim1, &ConfigOC, TIM_CHANNEL_1);
+    HAL_TIM_PWM_ConfigChannel(&tim, &ConfigOC, TIM_CHANNEL_3);
     ConfigOC.OCMode = TIM_OCMODE_PWM2;
-    ConfigOC.Pulse = tim1.Init.Period - duty;
-    HAL_TIM_PWM_ConfigChannel(&tim1, &ConfigOC, TIM_CHANNEL_2);
+    ConfigOC.Pulse = tim.Init.Period - duty;
+    HAL_TIM_PWM_ConfigChannel(&tim, &ConfigOC, TIM_CHANNEL_4);
     GPIO_InitTypeDef PWMGPIO = {
-        .Pin = GPIO_PIN_8 | GPIO_PIN_9,
+        .Pin = GPIO_PIN_0 | GPIO_PIN_1,
         .Mode = GPIO_MODE_AF_PP,
         .Pull = GPIO_NOPULL,
         .Speed = GPIO_SPEED_FREQ_LOW,
-        .Alternate = GPIO_AF1_TIM1,
+        .Alternate = GPIO_AF2_TIM3,
     };
-    HAL_GPIO_Init(GPIOA, &PWMGPIO);
-    HAL_TIM_Base_Start(&tim1);
-    HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&tim1, TIM_CHANNEL_2);
+    HAL_GPIO_Init(GPIOB, &PWMGPIO);
+    HAL_TIM_Base_Start(&tim);
+    HAL_TIM_PWM_Start(&tim, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&tim, TIM_CHANNEL_4);
 
     
     Canvas background, text = {0};
@@ -182,7 +176,7 @@ int main()
         cvnprintf(text, 127, 0, 24, "ADC2: %d", result);
         result = HAL_ADCEx_InjectedGetValue(&adc1, 3);
         cvnprintf(text, 127, 0, 32, "ADC3: %d", result);
-        cvnprintf(text, 127, 0, 40, "TIM1: %d", tim1.Instance->CNT);
+        cvnprintf(text, 127, 0, 40, "tim: %d", tim.Instance->CNT);
 
         merge_canvas(text, background, background);
         flush_canvas(&i2c, text);

@@ -40,7 +40,6 @@ extern "C"
 {
     void SysTick_Handler()
     {
-        //HAL_IncTick();
         if (on_systick)
            on_systick();
     }
