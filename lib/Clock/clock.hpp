@@ -79,10 +79,14 @@ namespace clock
         return ticks * 1000ULL / SystemCoreClock;
     }
 
-
+    /**
+     * @brief delay
+     * 
+     * @param delay when passed as `uint64_t`, it is interpreted as microseconds
+     */
     inline void delay(uint64_t delay_us) noexcept
     {
-        uint64_t target = (delay_us * SystemCoreClock / 1000000ULL) + get_systick();
+        const uint64_t target = (delay_us * SystemCoreClock / 1000000ULL) + get_systick();
         while (get_systick() < target);
     }
     inline void delay(std::chrono::microseconds delay_time) noexcept

@@ -10,12 +10,12 @@
 #include "property.hpp"
 #include "userconfig.hpp"
 #include "gpio.hpp"
-#include "time.hpp"
+#include "clock.hpp"
 #include "macro.h"
 
 #define __I2C_NOP asm("NOP");
-#define __I2C_SCL_DELAY REP(0, 0, 7, __I2C_NOP);
-#define __I2C_COM_DELAY if (delay_us) timer.delay_us(delay_us);
+#define __I2C_SCL_DELAY REP(0, 0, 8, __I2C_NOP);
+#define __I2C_COM_DELAY if (delay_us) clock::delay(delay_us);
 
 namespace vermils
 {
@@ -173,7 +173,6 @@ namespace i2c
          * @param address 
          * @param data 
          * @param size 
-         * @return size of data written
          * @throw `NoSlaveAck` if address is not acknowledged
          * @throw `I2CException` if any error occurs
          */
@@ -185,8 +184,8 @@ namespace i2c
 
             for (; i < size; ++i)
             {
-                if (!write_byte(data[i]))
-                    return i;
+                if (not write_byte(data[i]))
+                    break;
                 raise_if_error();
             }
             end();
@@ -276,9 +275,15 @@ namespace i2c
                 throw ArbitrationLost();
             }
         }
-        virtual void raise_if_error() const
-        {
+        virtual void raise_if_error(const bool end=true) const
+        try{
             raise_if_arbitration_lost();
+        }
+        catch (const std::exception &e)
+        {
+            if (end)
+                this->end();
+            throw e;
         }
     };
 
@@ -297,7 +302,6 @@ namespace i2c
     {
     protected:
         mutable bool _arbitration_lost = false;
-        time::HighResTimer timer = {};
         void _start() const;
         void _terminate() const;
         virtual bool is_arbitration_lost() const noexcept override
@@ -309,7 +313,7 @@ namespace i2c
             _arbitration_lost = false;
         }
     public:
-        const gpio::Pin &sda, &scl;
+        const gpio::Pin sda, scl;
         uint32_t delay_us;
         // Whether to enable High Speed Mode
         bool highspeed;
@@ -320,9 +324,9 @@ namespace i2c
         // Whether to send start byte before address
         bool start_byte;
         SoftMaster(
-            const gpio::Pin &sda_, const gpio::Pin &scl_, const uint32_t delay_us_ = 0,
-            bool highspeed_ = false, uint8_t master_code_ = 1,
-            bool use_pp_for_hs_ = false, bool start_byte_ = false
+            const gpio::Pin &sda, const gpio::Pin &scl, const uint32_t delay_us = 0,
+            bool highspeed = false, uint8_t master_code = 1,
+            bool use_pp_for_hs = false, bool start_byte = false
             );
         void set_speed(Speed speed) noexcept
         {
@@ -353,7 +357,7 @@ namespace i2c
                 return Speed::Fast;
             return Speed::Standard;
         }
-        bool detect_busy(uint32_t timeout_us=100) const;
+        bool detect_busy(const uint32_t timeout_us=100) const;
         /**
          * @brief Writes a bit to slave
          * 
@@ -398,13 +402,20 @@ namespace i2c
         }
         bool select(addr_t address, const bool read) const noexcept override;
         void end() const override;
-        bool write_byte(const uint8_t data) const noexcept override;
+        /**
+         * @brief write a byte
+         * 
+         * @param data 
+         * @return bool whether the slave acknowledged the byte
+         * @throw ArbitrationLost
+         */
+        bool write_byte(const uint8_t data) const override;
         /**
          * @throw ArbitrationLost
          * @return uint8_t 
          */
         uint8_t read_byte(const bool acknowledge=true) const override;
-        size_t write_bytes(addr_t address, const uint8_t *data, const std::size_t size) const override;
+        std::size_t write_bytes(addr_t address, const uint8_t *data, const std::size_t size) const override;
         std::size_t read_bytes(addr_t address, uint8_t *data, const std::size_t maxsize) const override;
     };
 
@@ -495,7 +506,7 @@ namespace i2c
          * @return uint8_t 
          */
         uint8_t read_byte(bool acknowledge=true) const override;
-        void raise_if_error() const override;
+        void raise_if_error(const bool end=true) const override;
 
         void set_clock_strech(bool enable) const noexcept;
         bool get_clock_strech() const noexcept;
@@ -540,7 +551,3 @@ namespace i2c
 }
 }
 }
-
-#undef __I2C_NOP
-#undef __I2C_SCL_DELAY
-#undef __I2C_COM_DELAY

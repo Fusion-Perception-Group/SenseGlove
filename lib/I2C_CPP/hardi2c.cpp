@@ -252,7 +252,7 @@ bool HardMaster::write_byte(uint8_t data) const
 
     while (not (reg.SR1 & I2C_SR1_BTF))
         raise_if_error();
-    return not (reg.SR1 & I2C_SR1_AF);
+    return not (reg.SR1 & I2C_SR1_AF);   
 }
 
 uint8_t HardMaster::read_byte(bool acknowledge) const
@@ -268,11 +268,12 @@ uint8_t HardMaster::read_byte(bool acknowledge) const
 }
 
 
-void HardMaster::raise_if_error() const
+void HardMaster::raise_if_error(const bool end) const
 {
     if (reg.SR1 & (I2C_SR1_PECERR | I2C_SR1_TIMEOUT | I2C_SR1_OVR | I2C_SR1_ARLO | I2C_SR1_BERR))
     {
-        end();
+        if (end)
+            this->end();
         if (reg.SR1 & I2C_SR1_PECERR)
         {
             reg.SR1 &= ~I2C_SR1_PECERR;

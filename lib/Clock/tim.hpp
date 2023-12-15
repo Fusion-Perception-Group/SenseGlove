@@ -550,7 +550,7 @@ public:
         }
     public:
         const uint8_t order;
-        volatile uint32_t &CapComRegister; // not that Capcom, no games here
+        volatile uint32_t &capcomreg; // not that Capcom, no games here
         volatile uint32_t &CCMRx;
         mutable CallbackType on_capture{};
         mutable CallbackType on_compare{};
@@ -558,7 +558,7 @@ public:
         _OutputPreloadEnabled output_preload_enabled{*this};
 
         Channel(T &timer, const uint8_t order) : _timer(timer), order(order),
-                CapComRegister(_get_ccr(timer, order)), CCMRx(_get_ccmr(timer, order))
+                capcomreg(_get_ccr(timer, order)), CCMRx(_get_ccmr(timer, order))
         {}
         virtual ~Channel() = default;
         Channel & operator=(const Channel &) = delete;
@@ -656,6 +656,32 @@ public:
         }
 
         /**
+         * @brief Set the pwm
+         * 
+         * @param frequency 
+         * @param duty_ratio 
+         * @param use_mode1 
+         * @throw std::invalid_argument
+         */
+        void set_pwm(const uint32_t frequency, const double duty_ratio, const bool use_mode1=true) const
+        {
+            if (duty_ratio < 0.0 || duty_ratio > 1.0)
+                throw std::invalid_argument("duty cycle must be in [0.0, 1.0]");
+            _timer.set_frequency(frequency);
+            set_io_selection(IOSelection::Output);
+            if (use_mode1)
+            {
+                capcomreg = static_cast<uint32_t>(duty_ratio * _timer.auto_reload);
+                set_output_mode(OutputCompareMode::PWM1);
+            }
+            else
+            {
+                capcomreg = static_cast<uint32_t>((1.0 - duty_ratio) * _timer.auto_reload);
+                set_output_mode(OutputCompareMode::PWM2);
+            }
+        }
+
+        /**
          * @brief 
          * 
          * @param config 
@@ -669,7 +695,7 @@ public:
             if (config.io_selection == IOSelection::Output)
             {
                 set_output_mode(config.output_mode);
-                CapComRegister = config.pulse;
+                capcomreg = config.pulse;
                 set_inverse_polarity(config.inverse_polarity);
                 output_preload_enabled = true;
                 set_fast_mode(config.fast_mode);

@@ -8,7 +8,6 @@
 #include "usart.hpp"
 #include "i2c.hpp"
 #include "spi.hpp"
-#include "time.hpp"
 #include "trace.hpp"
 #include "wdg.hpp"
 #include "macro.h"

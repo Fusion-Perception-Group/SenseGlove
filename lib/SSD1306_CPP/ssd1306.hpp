@@ -7,16 +7,10 @@ namespace vermils
 {
 namespace ssd1306
 {
-    class SSD1306Exception : public std::exception
+    class SSD1306Exception : public std::runtime_error
     {
-        const char * msg = "SSD1306Exception";
     public:
-        SSD1306Exception() {}
-        SSD1306Exception(const char *msg): msg(msg) {}
-        const char *what() const noexcept override
-        {
-            return msg;
-        }
+        SSD1306Exception(const char *msg): std::runtime_error(msg) {}
     };
     
     static constexpr uint8_t PAGES = 8, COLS = 128, PAGE_HEIGHT = 8;

@@ -1,7 +1,7 @@
 #include <string>
 #include "CLK_CFG.h"
 #include "time.hpp"
-//#include "MCU.hpp"
+#include "mcu.hpp"
 #include "gpio.hpp"
 #include "i2c.hpp"
 #include "ssd1306.hpp"
@@ -23,11 +23,6 @@ using std::string;
 
 int main()
 {
-    HAL_Init();
-    SystemClock_Config();
-    // MX_RTC_Init();
-    //LED_Init();
-    BUTTON_Init();
     bool ret = true;
 
     using namespace vermils;
@@ -36,6 +31,8 @@ int main()
     using gpio::Pin;
     using gpio::PinConfig;
     using namespace gpio::ports;
+
+    mcu::init();
 
     HighResTimer timer;
 
@@ -99,13 +96,3 @@ int main()
     }
 }
 
-void BUTTON_Init()
-{
-    //enable_GPIO_CLK(BUTTON_GPIO_PORT);
-    //init_GPIO(
-    //    BUTTON_GPIO_PORT,
-    //    BUTTON_PIN,
-    //    GPIO_MODE_INPUT,
-    //    GPIO_PULLUP,
-    //    GPIO_SPEED_HIGH);
-}

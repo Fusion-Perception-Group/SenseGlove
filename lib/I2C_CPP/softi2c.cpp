@@ -1,9 +1,5 @@
 #include "i2c.hpp"
 
-#define __I2C_NOP asm("NOP");
-#define __I2C_SCL_DELAY REP(0, 0, 7, __I2C_NOP);
-#define __I2C_COM_DELAY if (delay_us) timer.delay_us(delay_us);
-
 namespace vermils
 {
 namespace stm32
@@ -11,11 +7,11 @@ namespace stm32
 namespace i2c
 {
     SoftMaster::SoftMaster(
-        const gpio::Pin &sda_, const gpio::Pin &scl_, const uint32_t delay_us_,
-        bool highspeed_, uint8_t master_code_,
-        bool use_pp_for_hs_, bool start_byte_
-        ):sda(sda_), scl(scl_), delay_us(delay_us_), highspeed(highspeed_), master_code(master_code_),
-        use_pp_for_hs(use_pp_for_hs_), start_byte(start_byte_)
+        const gpio::Pin &sda, const gpio::Pin &scl, const uint32_t delay_us,
+        bool highspeed, uint8_t master_code,
+        bool use_pp_for_hs, bool start_byte
+        ):sda(sda), scl(scl), delay_us(delay_us), highspeed(highspeed), master_code(master_code),
+        use_pp_for_hs(use_pp_for_hs), start_byte(start_byte)
     {
         sda.port.enable_clock();
         scl.port.enable_clock();
@@ -74,6 +70,7 @@ namespace i2c
 
     bool SoftMaster::select(addr_t address, const bool read) const noexcept
     {
+        end();
         if (start_byte)
         {
             _start();
@@ -134,7 +131,7 @@ namespace i2c
         return true;
     }
 
-    inline bool SoftMaster::write_byte(const uint8_t data) const noexcept
+    inline bool SoftMaster::write_byte(const uint8_t data) const
     {
         try
         {
@@ -150,7 +147,7 @@ namespace i2c
         catch (const ArbitrationLost &e)
         {
             sda.set(); // Release SDA
-            return false;
+            throw e;
         }
         sda.set(); // Release SDA
         return !read_bit(); // 0: ACK, 1: NACK
@@ -178,20 +175,20 @@ namespace i2c
         return data;
     }
 
-    bool SoftMaster::detect_busy(uint32_t timeout_us) const
+    bool SoftMaster::detect_busy(const uint32_t timeout_us) const
     {
-        uint32_t start = timer.get_us();
+        auto timeout = clock::make_timeout(std::chrono::microseconds(timeout_us));
         sda.set();
-        timer.delay_ns(delay_us);
+        clock::delay(delay_us);
         scl.set();
-        timer.delay_ns(delay_us);
+        clock::delay(delay_us);
 
         do
         {
             if (!scl.read() || !sda.read())
                 return false;
         }
-        while (timer.get_us() - start < timeout_us);
+        while (not timeout.has_timedout());
 
         return true;
     }
@@ -202,7 +199,7 @@ namespace i2c
      * @param address 
      * @param data 
      * @param size 
-     * @return size of data written
+     * @return `std::size_t` number of bytes written
      * @throw `NoSlaveAck` if address is not acknowledged
      * @throw `I2CException` if any error occurs
      */
@@ -211,13 +208,13 @@ namespace i2c
         if (!select(address, false))
             throw NoSlaveAck();
         size_t i = 0;
-
         for (; i < size; ++i)
         {
-            if (!write_byte(data[i]))
-                return i;
-            raise_if_arbitration_lost(false);
+            if (not write_byte(data[i]))
+                break;
+            raise_if_error();
         }
+        end();
         return i;
     }
 
