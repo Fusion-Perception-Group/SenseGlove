@@ -116,6 +116,11 @@ public:
         reg.CR2 |= 1U << 30;
     }
 
+    void stop_regular() const noexcept
+    {
+        reg.CR2 &= ~(1U << 30);
+    }
+
     bool is_regular_running() const noexcept
     {
         return reg.SR & 0x10U;
@@ -353,11 +358,6 @@ public:
         return (reg.CR1 >> 23) & 1U;
     }
 
-    bool is_overrun_interrupt() const noexcept
-    {
-        return (reg.CR1 >> 26) & 1U;
-    }
-
     void set_analog_watchdog_single_channel_in_scan(bool on) const noexcept
     {
         if (on)
@@ -397,35 +397,43 @@ public:
         return (reg.CR1 >> 8) & 1U;
     }
 
-    void set_overrun_interrupt(bool on) const noexcept
+    void enable_interrupt_overrun() const noexcept
     {
-        if (on)
-            reg.CR1 |= 1U << 26;
-        else
-            reg.CR1 &= ~(1U << 26);
+        reg.CR1 |= 1U << 26;
+        reg.SR &= ~0x4U; // clear overrun flag
+        nvic::enable_irq(ADC_IRQn);
+    }
+    void disable_interrupt_overrun() const noexcept { reg.CR1 &= ~(1U << 26); }
+
+    void enable_interrupt_regular_done() const noexcept
+    {
+        reg.CR1 |= 1U << 5;
+        reg.SR &= ~0x10U;  // clear started flag
+        nvic::enable_irq(ADC_IRQn);
+    }
+    void disable_interrupt_regular_done() const noexcept { reg.CR1 &= ~(1U << 5); }
+
+    void enable_interrupt_analog_watchdog() const noexcept
+    {
+        reg.CR1 |= 1U << 6;
+        reg.SR &= ~0x1U; // clear watchdog flag
+        nvic::enable_irq(ADC_IRQn);
+    }
+    void disable_interrupt_analog_watchdog() const noexcept { reg.CR1 &= ~(1U << 6); }
+
+    virtual void enable_interrupts() const noexcept
+    {
+        enable_interrupt_overrun();
+        enable_interrupt_regular_done();
+        enable_interrupt_analog_watchdog();
     }
 
-    void set_end_of_conversion_interrupt(bool on) const noexcept
+    virtual void disable_interrupts() const noexcept
     {
-        if (on)
-            reg.CR1 |= 1U << 5;
-        else
-            reg.CR1 &= ~(1U << 5);
-    }
-
-    void set_analog_watchdog_interrupt(bool on) const noexcept
-    {
-        if (on)
-            reg.CR1 |= 1U << 6;
-        else
-            reg.CR1 &= ~(1U << 6);
-    }
-
-    void enable_interrupts() const noexcept
-    {
-        set_overrun_interrupt(true);
-        set_end_of_conversion_interrupt(true);
-        set_analog_watchdog_interrupt(true);
+        nvic::disable_irq(ADC_IRQn);
+        disable_interrupt_overrun();
+        disable_interrupt_regular_done();
+        disable_interrupt_analog_watchdog();
     }
 
     void on_regular_done_handler() const noexcept
@@ -434,8 +442,7 @@ public:
         if (reg.SR & mask)
         {
             reg.SR &= ~mask;
-            reg.SR &= ~0x10U;  // clear started flag
-            if (on_regular_done)
+            if (reg.CR1 & (1U << 5) && on_regular_done)
                 on_regular_done();
         }
     }
@@ -447,7 +454,7 @@ public:
         if (reg.SR & mask)
         {
             reg.SR &= ~mask;
-            if (on_watchdog)
+            if (reg.CR1 & (1U << 6) && on_watchdog)
                 on_watchdog();
         }
     }
@@ -459,7 +466,7 @@ public:
         if (reg.SR & mask)
         {
             reg.SR &= ~mask;
-            if (on_overrun)
+            if (reg.CR1 & (1U << 26) && on_overrun)
                 on_overrun();
         }
     }
@@ -472,9 +479,9 @@ public:
         on_overrun_handler();
     }
 
-    static void enable_irq() noexcept
+    static void set_irq_priority(const uint8_t priority=8)
     {
-        nvic::enable_irq(ADC_IRQn);
+        nvic::set_priority(ADC_IRQn, priority);
     }
 };
 
@@ -488,6 +495,11 @@ public:
     void start_injected() const noexcept
     {
         reg.CR2 |= 1U << 22U;
+    }
+
+    void stop_injected() const noexcept
+    {
+        reg.CR2 &= ~(1U << 22U);
     }
 
     /**
@@ -654,18 +666,24 @@ public:
         return (reg.CR1 >> 10) & 1U;
     }
 
-    void set_injected_interrupt(bool on) const noexcept
+    void enable_interrupt_injected_done() const noexcept
     {
-        if (on)
-            reg.CR1 |= 1U << 7;
-        else
-            reg.CR1 &= ~(1U << 7);
+        reg.CR1 |= 1U << 7;
+        reg.SR &= ~0x4U;  // clear started flag
+        nvic::enable_irq(ADC_IRQn);
     }
+    void disable_interrupt_injected_done() const noexcept { reg.CR1 &= ~(1U << 7); }
 
-    void enable_interrupts() const noexcept
+    void enable_interrupts() const noexcept override
     {
         RegularADC::enable_interrupts();
-        set_injected_interrupt(true);
+        enable_interrupt_injected_done();
+    }
+
+    void disable_interrupts() const noexcept override
+    {
+        RegularADC::disable_interrupts();
+        disable_interrupt_injected_done();
     }
 
     void on_injected_done_handler() const noexcept
@@ -673,7 +691,6 @@ public:
         const uint32_t mask = 0x4U;
         if (reg.SR & mask)
         {
-            reg.SR &= ~0x8U;  // clear started flag
             reg.SR &= ~mask;
             if (on_injected_done)
                 on_injected_done();

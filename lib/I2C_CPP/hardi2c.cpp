@@ -408,80 +408,81 @@ bool HardMaster::get_packet_error_checking() const noexcept
 }
 
 
-void HardMaster::set_event_interrupt(bool enable) const noexcept
+void HardMaster::enable_interrupt_event() const noexcept
 {
-    if (enable)
-    {
-        reg.CR2 |= I2C_CR2_ITEVTEN;
-    }
-    else
-    {
-        reg.CR2 &= ~I2C_CR2_ITEVTEN;
-    }
+    reg.CR2 |= I2C_CR2_ITEVTEN;
+    nvic::enable_irq(ev_irqn);
 }
-void HardMaster::set_event_buffer_interrupt(bool enable) const noexcept
+void HardMaster::disable_interrupt_event() const noexcept
 {
-    if (enable)
-    {
-        reg.CR2 |= I2C_CR2_ITBUFEN;
-    }
-    else
-    {
-        reg.CR2 &= ~I2C_CR2_ITBUFEN;
-    }
+    reg.CR2 &= ~I2C_CR2_ITEVTEN;
 }
-void HardMaster::set_error_interrupt(bool enable) const noexcept
+void HardMaster::enable_interrupt_event_buffer() const noexcept
 {
-    if (enable)
-    {
-        reg.CR2 |= I2C_CR2_ITERREN;
-    }
-    else
-    {
-        reg.CR2 &= ~I2C_CR2_ITERREN;
-    }
+    reg.CR2 |= I2C_CR2_ITBUFEN;
+    nvic::enable_irq(ev_irqn);
+}
+void HardMaster::disable_interrupt_event_buffer() const noexcept
+{
+    reg.CR2 &= ~I2C_CR2_ITBUFEN;
+}
+void HardMaster::enable_interrupt_error() const noexcept
+{
+    reg.CR2 |= I2C_CR2_ITERREN;
+    nvic::enable_irq(err_irqn);
+}
+void HardMaster::disable_interrupt_error() const noexcept
+{
+    nvic::disable_irq(err_irqn);
+    reg.CR2 &= ~I2C_CR2_ITERREN;
 }
 void HardMaster::on_event_handler() const noexcept
 try{
     Event event = Event::None;
-    if (reg.SR1 & I2C_SR1_SB)
+    auto sr = reg.SR1;
+    if (sr & I2C_SR1_SB)
         event = Event::StartBitSent;
-    else if (reg.SR1 & I2C_SR1_ADDR)
+    else if (sr & I2C_SR1_ADDR)
         event = Event::AddressSentOrMatched;
-    else if (reg.SR1 & I2C_SR1_ADD10)
+    else if (sr & I2C_SR1_ADD10)
         event = Event::Address10bitHeaderSent;
-    else if (reg.SR1 & I2C_SR1_STOPF)
+    else if (sr & I2C_SR1_STOPF)
         event = Event::StopReceived;
-    else if (reg.SR1 & I2C_SR1_BTF)
+    else if (sr & I2C_SR1_BTF)
         event = Event::DataByteFinished;
-    else if (reg.SR1 & I2C_SR1_RXNE)
+    else if (sr & I2C_SR1_RXNE)
         event = Event::ReceiverAvailable;
-    else if (reg.SR1 & I2C_SR1_TXE)
+    else if (sr & I2C_SR1_TXE)
         event = Event::TransmitterAvailable;
+
+    // will not clear flags
     
-    if (on_event)
+    if (reg.CR2 & (I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN) && on_event)
         on_event(event);
 }
 catch(...) {}
 void HardMaster::on_error_handler() const noexcept
 try{
     Error error = Error::None;
-    if (reg.SR1 & I2C_SR1_BERR)
+    auto sr = reg.SR1;
+    if (sr & I2C_SR1_BERR)
         error = Error::BusError;
-    else if (reg.SR1 & I2C_SR1_ARLO)
+    else if (sr & I2C_SR1_ARLO)
         error = Error::ArbitrationLost;
-    else if (reg.SR1 & I2C_SR1_AF)
+    else if (sr & I2C_SR1_AF)
         error = Error::AcknowledgeFailure;
-    else if (reg.SR1 & I2C_SR1_OVR)
+    else if (sr & I2C_SR1_OVR)
         error = Error::OverrunUnderrun;
-    else if (reg.SR1 & I2C_SR1_PECERR)
+    else if (sr & I2C_SR1_PECERR)
         error = Error::PECError;
-    else if (reg.SR1 & I2C_SR1_TIMEOUT)
+    else if (sr & I2C_SR1_TIMEOUT)
         error = Error::Timeout;
-    else if (reg.SR1 & I2C_SR1_SMBALERT)
+    else if (sr & I2C_SR1_SMBALERT)
         error = Error::SMBusAlert;
     
-    if (on_error)
+    // will not clear flags, use raise_if_error() to clear flags
+    
+    if (reg.CR2 & I2C_CR2_ITERREN && on_error)
         on_error(error);
 }
 catch(...) {}

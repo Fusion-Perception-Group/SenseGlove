@@ -85,7 +85,7 @@ namespace hidden
     }
 
 } // namespace hidden
-void Pin::trigger_irq() const noexcept
+void Pin::trigger_interrupt() const noexcept
 {
     #ifdef __VERMIL_STM32HX
     EXTI->SWIER1 |= mask;

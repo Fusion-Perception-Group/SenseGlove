@@ -239,6 +239,10 @@ struct CaptureCompareConfig
 class BasicTimer
 {
 protected:
+    virtual nvic::IRQn_Type _get_trigger_irqn() const noexcept
+    {
+        return general_irq;
+    }
     template <typename T>
     struct _Property : tricks::StaticProperty<T, BasicTimer &>
     {
@@ -303,7 +307,7 @@ public:
     volatile uint32_t & counter;
     volatile uint32_t & auto_reload;
     volatile uint32_t & prescaler;
-    const nvic::IRQn_Type reload_irqn;
+    const nvic::IRQn_Type general_irq;
     const uint32_t MAX_PERIOD;
     const uint32_t MAX_PRESCALER;
     const uint32_t MAX_REP_COUNTER;
@@ -316,7 +320,7 @@ public:
 
     BasicTimer(detail::Register &reg, nvic::IRQn_Type r_irqn,
         uint32_t max_peroid=0xFFFFU, uint32_t max_prescaler=0xFFFFU, uint32_t max_repetition=0xFFU)
-        : reg(reg), counter(reg.CNT), auto_reload(reg.ARR), prescaler(reg.PSC), reload_irqn(r_irqn),
+        : reg(reg), counter(reg.CNT), auto_reload(reg.ARR), prescaler(reg.PSC), general_irq(r_irqn),
           MAX_PERIOD(max_peroid), MAX_PRESCALER(max_prescaler), MAX_REP_COUNTER(max_repetition)
     {}
     BasicTimer & operator=(const BasicTimer &) = delete;
@@ -443,14 +447,41 @@ public:
         set_period_ticks(ticks);
     }
 
-    void enable_irq() const noexcept;
+    void enable_interrupt_reload() const noexcept
+    {
+        const uint32_t MASK = 0x01U;
+        reg.DIER |= MASK;
+        reg.SR &= ~MASK;
+        nvic::enable_irq(general_irq);
+    }
+    void disable_interrupt_reload() const noexcept { reg.DIER &= ~0x01U; }
+
+    void enable_interrupt_trigger() const noexcept
+    {
+        const uint32_t MASK = 0x40U;
+        reg.DIER |= MASK;
+        reg.SR &= ~MASK;
+        nvic::enable_irq(_get_trigger_irqn());
+    }
+    virtual void disable_interrupt_trigger() const noexcept { reg.DIER &= ~0x40U; }
+
+    virtual void enable_interrupts() const noexcept
+    {
+        enable_interrupt_reload();
+        enable_interrupt_trigger();
+    }
 
     void set_irq_priority(const uint8_t priority) const
     {
-        nvic::set_priority(reload_irqn, priority);
+        nvic::set_priority(general_irq, priority);
     }
 
-    void disable_irq() const noexcept;
+    virtual void disable_interrupts() const noexcept
+    {
+        nvic::disable_irq(general_irq);
+        disable_interrupt_reload();
+        disable_interrupt_trigger();
+    }
 
     void on_reload_handler() const noexcept
     try{
@@ -476,8 +507,8 @@ public:
         if (reg.SR & FLAG_MASK)  // check if flag is set
         {
             reg.SR = ~FLAG_MASK; // clear pending interrupt
-            if (reg.DIER & FLAG_MASK &&  // check if source is enabled
-                on_trigger)  // check if callback is set
+            if (reg.DIER & FLAG_MASK  // check if source is enabled
+                && on_trigger)  // check if callback is set
             {
                 on_trigger();
             }
@@ -501,6 +532,11 @@ public:
 
 class BaseGeneralPurposeTimer : public BasicTimer
 {
+protected:
+    virtual nvic::IRQn_Type _get_cc_irqn() const noexcept
+    {
+        return general_irq;
+    }
 public:
     using BasicTimer::BasicTimer;
     class Channel
@@ -643,6 +679,16 @@ public:
             return static_cast<EdgeTrigger>((_timer.reg.CCER >> (order*4)) & 0xAU);
         }
 
+        bool is_overcaptured() const noexcept
+        {
+            return _timer.reg.SR & (1U << (order + 9));
+        }
+
+        void clear_overcaptured() const noexcept
+        {
+            _timer.reg.SR &= ~(1U << (order + 9));
+        }
+
         void set_io_selection(const IOSelection value) const noexcept
         {
             const unsigned shift = (order%2) * 8;
@@ -710,6 +756,24 @@ public:
             }
         }
 
+        void enable_interrupt_capcom() const noexcept
+        {
+            const uint32_t MASK = 2U << order;
+            _timer.reg.DIER |= MASK;
+            _timer.reg.SR &= ~MASK;
+            nvic::enable_irq(_timer._get_cc_irqn());
+        }
+        void disable_interrupt_capcom() const noexcept { _timer.reg.DIER &= ~(2U << order); }
+
+        virtual void enable_interrupts() const noexcept
+        {
+            enable_interrupt_capcom();
+        }
+        virtual void disable_interrupts() const noexcept
+        {
+            disable_interrupt_capcom();
+        }
+
         void irq_handler() const noexcept
         try{
             const uint32_t FLAG_MASK = 2U << order;
@@ -730,10 +794,7 @@ public:
                 }
             }
         }
-        catch(...)
-        {
-            // do nothing
-        }
+        catch(...){}
     };
 
     /**
@@ -963,6 +1024,15 @@ public:
 
 class AdvancedTimer : public BaseGeneralPurposeTimer
 {
+protected:
+    nvic::IRQn_Type _get_trigger_irqn() const noexcept override
+    {
+        return trigger_com_irqn;
+    }
+    nvic::IRQn_Type _get_cc_irqn() const noexcept override
+    {
+        return capcom_irqn;
+    }
 public:
     Channel_N_Break channel1{*this, 0};
     Channel_N_Break channel2{*this, 1};
@@ -994,37 +1064,40 @@ public:
         reg.RCR = value;
     }
     
-    void enable_break_irq() const noexcept
+    void enable_interrupt_break(const uint8_t priority=8) const
     {
+        nvic::set_priority(break_irqn, priority);
         nvic::enable_irq(break_irqn);
     }
 
-    void disable_break_irq() const noexcept
+    void disable_interrupt_break() const noexcept
     {
         nvic::disable_irq(break_irqn);
     }
 
-    void enable_trigger_com_irq() const noexcept
+    void enable_interrupt_trigger_com(const uint8_t priority=8) const
     {
+        nvic::set_priority(trigger_com_irqn, priority);
         nvic::enable_irq(trigger_com_irqn);
     }
 
-    void disable_trigger_com_irq() const noexcept
+    void disable_interrupt_trigger_com() const noexcept
     {
         nvic::disable_irq(trigger_com_irqn);
     }
 
-    void enable_capcom_irq() const noexcept
+    void enable_interrupt_capcom(const uint8_t priority=8) const
     {
+        nvic::set_priority(capcom_irqn, priority);
         nvic::enable_irq(capcom_irqn);
     }
 
-    void disable_capcom_irq() const noexcept
+    void disable_interrupt_capcom() const noexcept
     {
         nvic::disable_irq(capcom_irqn);
     }
 
-    void cc_irq_handler() const noexcept
+    void on_cc_irq_handler() const noexcept
     {
         channel1.irq_handler();
         channel2.irq_handler();
@@ -1032,7 +1105,7 @@ public:
         channel4.irq_handler();
     }
 
-    void break_irq_handler() const noexcept
+    void on_break_irq_handler() const noexcept
     try{
         const uint32_t FLAG_MASK = 0x80U;
         if (reg.SR & FLAG_MASK)  // check if flag is set
@@ -1049,22 +1122,16 @@ public:
     {
     }
 
-    void trigger_com_irq_handler() const noexcept
+    void on_com_irq_handler() const noexcept
     try{
-        const uint32_t FLAG_MASK = 0x20U;
-        if (reg.SR & FLAG_MASK)  // check if flag is set
+        const uint32_t COM_MASK = 0x20U;
+        if (reg.SR & COM_MASK)  // check if flag is set
         {
-            reg.SR = ~FLAG_MASK; // clear pending interrupt
-            if (reg.DIER & FLAG_MASK)  // check if source is enabled
+            reg.SR = ~COM_MASK; // clear pending interrupt
+            if (reg.DIER & COM_MASK  // check if source is enabled
+                && on_communication)  // check if callback is set
             {
-                if (on_communication)  // check if callback is set
-                {
-                    on_communication();
-                }
-                if (on_trigger)  // check if callback is set
-                {
-                    on_trigger();
-                }
+                on_communication();
             }
         }
     }
@@ -1075,9 +1142,10 @@ public:
     void global_irq_handler() const noexcept
     {
         on_reload_handler();
-        cc_irq_handler();
-        break_irq_handler();
-        trigger_com_irq_handler();
+        on_trigger_handler();
+        on_cc_irq_handler();
+        on_break_irq_handler();
+        on_com_irq_handler();
     }
 };
 

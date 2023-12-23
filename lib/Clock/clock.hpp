@@ -66,7 +66,7 @@ namespace clock
     };
 
 
-    void init_systick() noexcept;
+    void init_systick(const uint32_t reload_value=0xFFFFFFFF, const uint8_t interrupt_prior=0);
     uint64_t get_systick() noexcept;
     inline uint64_t get_systick_ns() noexcept
     {

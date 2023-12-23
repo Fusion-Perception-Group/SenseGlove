@@ -94,20 +94,30 @@ namespace spi
         bool is_bidirectional() const noexcept;
         bool is_rxonly() const noexcept;
 
-        void set_on_send_interrupt(bool on) const noexcept;
-        void set_on_recv_interrupt(bool on) const noexcept;
-        void set_on_error_interrupt(bool on) const noexcept;
+        void enable_on_send_interrupt() const noexcept;
+        void enable_on_recv_interrupt() const noexcept;
+        void enable_on_error_interrupt() const noexcept;
+        void disable_on_send_interrupt() const noexcept;
+        void disable_on_recv_interrupt() const noexcept;
+        void disable_on_error_interrupt() const noexcept;
 
         void enable_interrupts() const noexcept
         {
-            set_on_send_interrupt(true);
-            set_on_recv_interrupt(true);
-            set_on_error_interrupt(true);
+            enable_on_send_interrupt();
+            enable_on_recv_interrupt();
+            enable_on_error_interrupt();
+        }
+        void disable_interrupts() const noexcept
+        {
+            nvic::disable_irq(irqn);
+            disable_on_send_interrupt();
+            disable_on_recv_interrupt();
+            disable_on_error_interrupt();
         }
 
-        void enable_irq() const noexcept
+        void set_irq_priority(const uint8_t priority=8) const
         {
-            nvic::enable_irq(irqn);
+            nvic::set_priority(irqn, priority);
         }
 
         void on_send_handler() const noexcept;

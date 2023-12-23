@@ -327,38 +327,32 @@ void HardwareInterface::raise_if_error() const
 }
 
 
-void HardwareInterface::set_on_send_interrupt(bool on) const noexcept
+void HardwareInterface::enable_on_send_interrupt() const noexcept
 {
-    if (on)
-    {
-        reg.CR2 |= SPI_CR2_TXEIE;
-    }
-    else
-    {
-        reg.CR2 &= ~SPI_CR2_TXEIE;
-    }
+    reg.CR2 |= SPI_CR2_TXEIE;
+    nvic::enable_irq(irqn);
 }
-void HardwareInterface::set_on_recv_interrupt(bool on) const noexcept
+void HardwareInterface::disable_on_send_interrupt() const noexcept
 {
-    if (on)
-    {
-        reg.CR2 |= SPI_CR2_RXNEIE;
-    }
-    else
-    {
-        reg.CR2 &= ~SPI_CR2_RXNEIE;
-    }
+    reg.CR2 &= ~SPI_CR2_TXEIE;
 }
-void HardwareInterface::set_on_error_interrupt(bool on) const noexcept
+void HardwareInterface::enable_on_recv_interrupt() const noexcept
 {
-    if (on)
-    {
-        reg.CR2 |= SPI_CR2_ERRIE;
-    }
-    else
-    {
-        reg.CR2 &= ~SPI_CR2_ERRIE;
-    }
+    reg.CR2 |= SPI_CR2_RXNEIE;
+    nvic::enable_irq(irqn);
+}
+void HardwareInterface::disable_on_recv_interrupt() const noexcept
+{
+    reg.CR2 &= ~SPI_CR2_RXNEIE;
+}
+void HardwareInterface::enable_on_error_interrupt() const noexcept
+{
+    reg.CR2 |= SPI_CR2_ERRIE;
+    nvic::enable_irq(irqn);
+}
+void HardwareInterface::disable_on_error_interrupt() const noexcept
+{
+    reg.CR2 &= ~SPI_CR2_ERRIE;
 }
 
 void HardwareInterface::on_send_handler() const noexcept

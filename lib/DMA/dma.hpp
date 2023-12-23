@@ -23,9 +23,9 @@ namespace detail
     {
         volatile uint32_t CR;     /*!< DMA stream x configuration register      */
         volatile uint32_t NDTR;   /*!< DMA stream x number of data register     */
-        volatile void * PAR;    /*!< DMA stream x peripheral address register */
-        volatile void * M0AR;   /*!< DMA stream x memory 0 address register   */
-        volatile void * M1AR;   /*!< DMA stream x memory 1 address register   */
+        void * volatile  PAR;    /*!< DMA stream x peripheral address register */
+        void * volatile  M0AR;   /*!< DMA stream x memory 0 address register   */
+        void * volatile  M1AR;   /*!< DMA stream x memory 1 address register   */
         volatile uint32_t FCR;    /*!< DMA stream x FIFO control register       */
     };
 
@@ -70,7 +70,7 @@ enum class Priority
     Low = 0,
     Medium = 1,
     High = 2,
-    VeryHigh = 3
+    Top = 3
 };
 
 enum class UnitSize
@@ -80,11 +80,19 @@ enum class UnitSize
     Word = 2
 };
 
+enum AddressType
+{
+    Flash,
+    Ram,
+    Peripheral,
+    Unknown
+};
+
 enum class Direction
 {
-    Peri2Mem = 0,
-    Mem2Peripheral = 1,
-    Mem2Mem = 2
+    Peri2Ram = 0,
+    Ram2Peri = 1,
+    Ram2Ram = 2
 };
 
 enum class FIFOStatus
@@ -105,6 +113,28 @@ enum class FIFOThreshold
     Full = 3
 };
 
+/**
+ * @brief Get the addr type regarding to the address and STM32 mem-map convention
+ * 
+ * @param addr 
+ * @return AddressType 
+ */
+inline AddressType get_addr_type(const uintptr_t addr) noexcept
+{
+    if (addr < 0x20000000)
+        return AddressType::Flash;
+    else if (addr >= 0x20000000 && addr < 0x40000000)
+        return AddressType::Ram;
+    else if (addr >= 0x40000000 && addr <= 0xFFFFFFFF)
+        return AddressType::Peripheral;
+    else
+        return AddressType::Unknown;
+}
+
+inline AddressType get_addr_type(const volatile void * addr) noexcept
+{
+    return get_addr_type(reinterpret_cast<uintptr_t>(addr));
+}
 class BaseDMA
 {
 public:
@@ -148,7 +178,119 @@ public:
                 this->owner.reg.NDTR = on;
             }
         };
-        BaseDMA & _dma;
+        struct _DestAddr : public _Property<void *>
+        {
+            constexpr _DestAddr(Stream & stream) : _Property<void *>(stream) {}
+            using _Property<void *>::operator=;
+            void * getter() const override
+            {
+                if (owner.get_direction() == Direction::Ram2Peri)
+                    return owner.reg.PAR;
+                else
+                    return owner.reg.M0AR;
+            }
+            void setter(void * value) const override
+            {
+                const bool dst_is_ram = is_ram_addr(value);
+                void * const src_addr = owner.src_addr;
+                const bool src_is_ram = is_ram_addr(src_addr);
+                if (not dst_is_ram)
+                {
+                    owner.reg.PAR = value;
+                    owner.reg.M0AR = src_addr;
+                    owner.set_direction(Direction::Ram2Peri);
+                }
+                else 
+                {
+                    owner.reg.M0AR = value;
+                    owner.reg.PAR = src_addr;
+                    if (src_is_ram)
+                        owner.set_direction(Direction::Ram2Ram);
+                    else
+                        owner.set_direction(Direction::Peri2Ram);
+                }
+            }
+        };
+        struct _SauceAddr : public _Property<void *>
+        {
+            constexpr _SauceAddr(Stream & stream) : _Property<void *>(stream) {}
+            using _Property<void *>::operator=;
+            void * getter() const override
+            {
+                if (owner.get_direction() == Direction::Ram2Peri)
+                    return owner.reg.M0AR;
+                else
+                    return owner.reg.PAR;
+            }
+            void setter(void * value) const override
+            {
+                const bool src_is_ram = is_ram_addr(value);
+                void * const dst_addr = owner.dst_addr;
+                const bool dst_is_ram = is_ram_addr(dst_addr);
+                if (not src_is_ram)
+                {
+                    owner.reg.PAR = value;
+                    owner.reg.M0AR = dst_addr;
+                    owner.set_direction(Direction::Peri2Ram);
+                }
+                else if (dst_is_ram)
+                {
+                    owner.reg.PAR = value;
+                    owner.reg.M0AR = dst_addr;
+                    owner.set_direction(Direction::Ram2Ram);
+                }
+                else
+                {
+                    owner.reg.M0AR = value;
+                    owner.reg.PAR = dst_addr;
+                    owner.set_direction(Direction::Ram2Peri);
+                }
+            }
+        };
+        void _set_peri_unit_size(UnitSize size) const noexcept
+        {
+            reg.CR &= ~(0x3 << 11);
+            reg.CR |= (static_cast<uint8_t>(size) << 11);
+        }
+        UnitSize _get_peri_unit_size() const noexcept
+        {
+            return static_cast<UnitSize>((reg.CR >> 11) & 0x3);
+        }
+        void _set_ram_unit_size(UnitSize size) const noexcept
+        {
+            reg.CR &= ~(0x3 << 13);
+            reg.CR |= (static_cast<uint8_t>(size) << 13);
+        }
+        UnitSize _get_ram_unit_size() const noexcept
+        {
+            return static_cast<UnitSize>((reg.CR >> 13) & 0x3);
+        }
+        void _set_ram_inc(bool on) const noexcept
+        {
+            if (on)
+                reg.CR |= (1 << 10);
+            else
+                reg.CR &= ~(1 << 10);
+        }
+
+        bool _is_ram_inc() const noexcept
+        {
+            return reg.CR & (1 << 10);
+        }
+
+        void _set_peri_inc(bool on) const noexcept
+        {
+            if (on)
+                reg.CR |= (1 << 9);
+            else
+                reg.CR &= ~(1 << 9);
+        }
+
+        bool _is_peri_inc() const noexcept
+        {
+            return reg.CR & (1 << 9);
+        }
+        BaseDMA &_dma;
     public:
         const uint8_t order;
         detail::_DMAStreamReg & reg;
@@ -158,18 +300,28 @@ public:
         mutable CallbackType on_direct_mode_error;
         mutable CallbackType on_transfer_error;
         mutable CallbackType on_fifo_error;
-        volatile void * & dst0_addr = reg.M0AR; // M0AR is the default destination address in memory
-        volatile void * & dst1_addr = reg.M1AR; // M1AR is the alternate destination address in memory (used in double buffer mode)
-        volatile void * & peri_addr = reg.PAR; // PAR is the default source address in peripheral
+        _DestAddr dst_addr{*this}; // destination address
+        _SauceAddr src_addr{*this}; // source address
+        void * volatile & dbuf_addr = reg.M1AR; // double buffer destination address in ram (only used in double buffer mode)
         _Enabled enabled{*this};
+        _Enabled &busy = enabled;
         _Count count{*this};
 
         Stream(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : _dma(dma), order(order), reg(reg), irqn(irqn) {}
         virtual ~Stream() = default;
         Stream & operator=(const Stream &) = delete;
 
+        static bool is_ram_addr(const volatile void * addr) noexcept
+        {
+            return get_addr_type(addr) == AddressType::Ram;
+        }
+
         void enable() const noexcept
         {
+            if (order < 4)  // clear related event flags before enabling stream
+                _dma.reg.LIFCR |= (0x3D << (6 * (order % 2) + 16 * (order % 4 > 2)));
+            else
+                _dma.reg.HIFCR |= (0x3D << (6 * (order % 2) + 16 * (order % 4 > 2)));
             reg.CR |= 1U;
         }
 
@@ -238,7 +390,7 @@ public:
         }
 
         /**
-         * @brief Set the peri inc override, override value is 4 bytes
+         * @brief Set the peri inc unit size override, override value is 4 bytes
          * 
          * @param on 
          */
@@ -257,50 +409,66 @@ public:
 
         void set_dst_unit_size(UnitSize size) const noexcept
         {
-            reg.CR &= ~(0x3 << 13);
-            reg.CR |= (static_cast<uint8_t>(size) << 13);
+            if (get_direction() == Direction::Ram2Peri)
+                _set_peri_unit_size(size);
+            else
+                _set_ram_unit_size(size);
         }
 
         UnitSize get_dst_unit_size() const noexcept
         {
-            return static_cast<UnitSize>((reg.CR >> 13) & 0x3);
+            if (get_direction() == Direction::Ram2Peri)
+                return _get_peri_unit_size();
+            else
+                return _get_ram_unit_size();
         }
 
-        void set_peri_unit_size(UnitSize size) const noexcept
+        void set_src_unit_size(UnitSize size) const noexcept
         {
-            reg.CR &= ~(0x3 << 11);
-            reg.CR |= (static_cast<uint8_t>(size) << 11);
+            if (get_direction() == Direction::Ram2Peri)
+                _set_ram_unit_size(size);
+            else
+                _set_peri_unit_size(size);
         }
 
-        UnitSize get_peri_unit_size() const noexcept
+        UnitSize get_src_unit_size() const noexcept
         {
-            return static_cast<UnitSize>((reg.CR >> 11) & 0x3);
+            if (get_direction() == Direction::Ram2Peri)
+                return _get_ram_unit_size();
+            else
+                return _get_peri_unit_size();
         }
 
         void set_dst_inc(bool on) const noexcept
         {
-            if (on)
-                reg.CR |= (1 << 10);
+            if (get_direction() == Direction::Ram2Peri)
+                _set_peri_inc(on);
             else
-                reg.CR &= ~(1 << 10);
+                _set_ram_inc(on);
         }
 
         bool is_dst_inc() const noexcept
         {
-            return reg.CR & (1 << 10);
-        }
-
-        void set_peri_inc(bool on) const noexcept
-        {
-            if (on)
-                reg.CR |= (1 << 9);
+            if (get_direction() == Direction::Ram2Peri)
+                return _is_peri_inc();
             else
-                reg.CR &= ~(1 << 9);
+                return _is_ram_inc();
         }
 
-        bool is_peri_inc() const noexcept
+        void set_src_inc(bool on) const noexcept
         {
-            return reg.CR & (1 << 9);
+            if (get_direction() == Direction::Ram2Peri)
+                _set_ram_inc(on);
+            else
+                _set_peri_inc(on);
+        }
+
+        bool is_src_inc() const noexcept
+        {
+            if (get_direction() == Direction::Ram2Peri)
+                return _is_ram_inc();
+            else
+                return _is_peri_inc();
         }
 
         void set_circular_mode(bool on) const noexcept
@@ -347,8 +515,8 @@ public:
 
         virtual void set_direction(Direction direction) const
         {
-            if (direction == Direction::Mem2Mem)
-                throw std::invalid_argument("direction cannot be Mem2Mem");
+            if (direction == Direction::Ram2Ram)
+                throw std::invalid_argument("direction cannot be Ram2Ram");
             reg.CR &= ~(0x3 << 6);
             reg.CR |= (static_cast<uint8_t>(direction) << 6);
         }
@@ -376,74 +544,106 @@ public:
             return reg.CR & (1 << 19) ? reg.M1AR : reg.M0AR;
         }
 
-        void enable_on_complete_interrupt() const noexcept { reg.CR |= (1 << 4); }
-        void disable_on_complete_interrupt() const noexcept { reg.CR &= ~(1 << 4); }
-        void enable_on_half_interrupt() const noexcept { reg.CR |= (1 << 3); }
-        void disable_on_half_interrupt() const noexcept { reg.CR &= ~(1 << 3); }
-        void enable_on_transfer_error_interrupt() const noexcept { reg.CR |= (1 << 2); }
-        void disable_on_transfer_error_interrupt() const noexcept { reg.CR &= ~(1 << 2); }
-        void enable_on_direct_mode_error_interrupt() const noexcept { reg.CR |= (1 << 1); }
-        void disable_on_direct_mode_error_interrupt() const noexcept { reg.CR &= ~(1 << 1); }
-        void enable_on_fifo_error_interrupt() const noexcept { reg.FCR |= (1 << 7); }
-        void disable_on_fifo_error_interrupt() const noexcept { reg.FCR &= ~(1 << 7); }
+        void enable_interrupt_complete() const noexcept
+        {
+            reg.CR |= (1 << 4);
+            nvic::enable_irq(irqn);
+        }
+        void disable_interrupt_complete() const noexcept { reg.CR &= ~(1 << 4); }
+        void enable_interrupt_half() const noexcept
+        {
+            reg.CR |= (1 << 3);
+            nvic::enable_irq(irqn);
+        }
+        void disable_interrupt_half() const noexcept { reg.CR &= ~(1 << 3); }
+        void enable_interrupt_transfer_error() const noexcept
+        {
+            reg.CR |= (1 << 2);
+            nvic::enable_irq(irqn);
+        }
+        void disable_interrupt_transfer_error() const noexcept { reg.CR &= ~(1 << 2); }
+        void enable_interrupt_direct_mode_error() const noexcept
+        {
+            reg.CR |= (1 << 1);
+            nvic::enable_irq(irqn);
+        }
+        void disable_interrupt_direct_mode_error() const noexcept { reg.CR &= ~(1 << 1); }
+        void enable_interrupt_fifo_error() const noexcept
+        {
+            reg.FCR |= (1 << 7);
+            nvic::enable_irq(irqn);
+        }
+        void disable_interrupt_fifo_error() const noexcept { reg.FCR &= ~(1 << 7); }
 
-        void enable_interrupts() const noexcept { reg.CR |= 0xFU << 1U; reg.FCR |= (1 << 7); }
-        void disable_interrupts() const noexcept { reg.CR &= ~(0xFU << 1U); reg.FCR &= ~(1 << 7); }
+        void enable_interrupts() const noexcept
+        {
+            reg.CR |= 0xFU << 1U;
+            reg.FCR |= (1 << 7);
+            nvic::enable_irq(irqn);
+        }
+        void disable_interrupts() const noexcept
+        {
+            nvic::disable_irq(irqn);
+            reg.CR &= ~(0xFU << 1U);
+            reg.FCR &= ~(1 << 7);
+        }
 
-        void enable_irq() const noexcept { nvic::enable_irq(irqn); }
-        void disable_irq() const noexcept { nvic::disable_irq(irqn); }
+        void set_irq_priority(const uint8_t priority=8) const
+        {
+            nvic::set_priority(irqn, priority);
+        }
 
-        void on_fifo_err_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
+        void on_fifo_err_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x1U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
-                *ifcr |= mask;
-                if (on_fifo_error)
+                *ifclr |= mask;
+                if (reg.FCR & (1 << 7) && on_fifo_error)
                     on_fifo_error();
             }
         }
         catch(...) {}
-        void on_direct_mode_err_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
+        void on_direct_mode_err_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x4U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
-                *ifcr |= mask;
-                if (on_direct_mode_error)
+                *ifclr |= mask;
+                if (reg.CR & (1 << 1) && on_direct_mode_error)
                     on_direct_mode_error();
             }
         }
         catch(...) {}
-        void on_transfer_err_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
+        void on_transfer_err_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x8U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
-                *ifcr |= mask;
-                if (on_transfer_error)
+                *ifclr |= mask;
+                if (reg.CR & (1 << 2) && on_transfer_error)
                     on_transfer_error();
             }
         }
         catch(...) {}
-        void on_half_complete_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
+        void on_half_complete_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x10U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
-                *ifcr |= mask;
-                if (on_half_complete)
+                *ifclr |= mask;
+                if (reg.CR & (1 << 3) && on_half_complete)
                     on_half_complete();
             }
         }
         catch(...) {}
-        void on_complete_handler(volatile uint32_t * ifcr, volatile uint32_t * ifsr) const noexcept
+        void on_complete_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x20U << (6 * (order % 2) + 16 * (order % 4 > 2));
             if (*ifsr & mask)
             {
-                *ifcr |= mask;
-                if (on_complete)
+                *ifclr |= mask;
+                if (reg.CR & (1 << 4) && on_complete)
                     on_complete();
             }
         }
@@ -451,24 +651,24 @@ public:
 
         void global_irq_handler() const noexcept
         {
-            volatile uint32_t * ifcr;
+            volatile uint32_t * ifclr;
             volatile uint32_t * ifsr;
             if (order < 4)
             {
-                ifcr = &_dma.reg.LIFCR;
+                ifclr = &_dma.reg.LIFCR;
                 ifsr = &_dma.reg.LISR;
             }
             else
             {
-                ifcr = &_dma.reg.HIFCR;
+                ifclr = &_dma.reg.HIFCR;
                 ifsr = &_dma.reg.HISR;
             }
 
-            on_complete_handler(ifcr, ifsr);
-            on_fifo_err_handler(ifcr, ifsr);
-            on_direct_mode_err_handler(ifcr, ifsr);
-            on_transfer_err_handler(ifcr, ifsr);
-            on_half_complete_handler(ifcr, ifsr);
+            on_complete_handler(ifclr, ifsr);
+            on_fifo_err_handler(ifclr, ifsr);
+            on_direct_mode_err_handler(ifclr, ifsr);
+            on_transfer_err_handler(ifclr, ifsr);
+            on_half_complete_handler(ifclr, ifsr);
         }
     };
 

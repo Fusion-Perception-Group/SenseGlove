@@ -1,3 +1,4 @@
+#include <utility>
 #include "clock.hpp"
 #include "nvic.hpp"
 #include "_config.hpp"
@@ -10,24 +11,23 @@ namespace stm32
 namespace clock
 {
 uint32_t & SystemCoreClock = ::SystemCoreClock;
-static volatile uint_fast64_t ticks_high=0;
+static volatile uint64_t ticks_high=0;
 
-static void increase_tick()
+static inline void increase_tick()
 {
-    ticks_high = ticks_high + 1U + SysTick_LOAD_RELOAD_Msk;
+    ticks_high = ticks_high + 1U + SysTick->LOAD;
 }
 
-void init_systick() noexcept
+void init_systick(const uint32_t reload_value, const uint8_t interrupt_prior)
 {
     SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-    SysTick->LOAD  = SysTick_LOAD_RELOAD_Msk;/* set reload register */
+    SysTick->LOAD  = std::min(reload_value, SysTick_LOAD_RELOAD_Msk);/* set reload register */
     SysTick->VAL   = 0UL;                     /* Load the SysTick Counter Value */
     SysTick->CTRL  = SysTick_CTRL_CLKSOURCE_Msk |
                     SysTick_CTRL_TICKINT_Msk   |
                     SysTick_CTRL_ENABLE_Msk;
+    nvic::set_priority(nvic::SysTick_IRQn, interrupt_prior);
     nvic::enable_irq(nvic::SysTick_IRQn);
-    nvic::set_priority(nvic::SysTick_IRQn, 15);
-    on_systick = increase_tick;
     ticks_high = 0;
 }
 
@@ -40,8 +40,7 @@ extern "C"
 {
     void SysTick_Handler()
     {
-        if (on_systick)
-           on_systick();
+        increase_tick();
     }
 
     uint32_t HAL_GetTick()

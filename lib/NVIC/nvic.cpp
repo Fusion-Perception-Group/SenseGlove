@@ -63,7 +63,7 @@ PriorityGroupPolicy get_priority_group()
  * @brief Set the priority object
  *
  * @param irq
- * @param priority
+ * @param priority, range from 0 to 15, 0 is the highest priority
  *
  * @throw `std::invalid_argument` if priority is out of range
  */

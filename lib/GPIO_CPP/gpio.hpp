@@ -433,9 +433,15 @@ public:
      * 
      * @throw GPIOException if the pin is not valid.
      */
-    void enable_irq() const noexcept
+    void enable_interrupt(const uint8_t priority=8) const
     {
-        nvic::enable_irq(get_irqn());
+        auto irqn = get_irqn();
+        nvic::enable_irq(irqn);
+    }
+
+    void disable_interrupt() const
+    {
+        nvic::disable_irq(get_irqn());
     }
 
     /**
@@ -453,12 +459,8 @@ public:
      * @brief trigger exti by software
      * 
      */
-    void trigger_irq() const noexcept;
+    void trigger_interrupt() const noexcept;
 
-    void disable_irq() const noexcept
-    {
-        nvic::disable_irq(get_irqn());
-    }
 
     bool operator == (const bool value) const noexcept
     {

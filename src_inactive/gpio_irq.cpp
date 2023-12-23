@@ -1,6 +1,6 @@
 #include <string>
 #include <chrono>
-#include "CLK_CFG.h"
+#include "mcu.hpp"
 #include "time.hpp"
 #include "nvic.hpp"
 #include "gpio.hpp"
@@ -12,9 +12,6 @@ using std::string;
 
 int main()
 {
-    HAL_Init();
-    SystemClock_Config();
-
     using std::chrono::operator ""ms;
     using std::chrono::operator ""ns;
     using namespace vermils;
@@ -24,7 +21,7 @@ int main()
     using gpio::PinConfig;
     using namespace gpio::ports;
 
-    HighResTimer timer;
+    mcu::init();
 
     PinConfig config(
         PinConfig::Output,
@@ -46,16 +43,11 @@ int main()
         }
     };
 
-    button.enable_irq();
+    button.enable_interrupt();
 
     while (true)
     {
         led.toggle();
-        timer.delay(1000ms);
+        clock::delay(1000ms);
     }
-}
-
-extern "C" void SysTick_Handler()
-{
-    HAL_IncTick();
 }

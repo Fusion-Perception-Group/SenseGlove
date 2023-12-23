@@ -74,7 +74,7 @@ int main()
             uint32_t hal_last = HAL_GetTick();
             clock::delay(1s);
             usrt.write(ffmt::format("hal ticks {}\n", HAL_GetTick()-hal_last));
-            usrt.write(ffmt::format("{}ms\n", (clock::get_systick_ms() - last)));
+            usrt.write(ffmt::format("{}ms diff {}ms\n", clock::get_systick_ms(), (clock::get_systick_ms() - last)));
             usrt.write(ffmt::format("ticks {}\n", clock::get_systick()));
             usrt.write(ffmt::format("clock speed {}Mhz\n", clock::SystemCoreClock/1_MHz));
             // usrt.write(ffmt::format("VAL {}\n", SysTick->VAL&0xFFFFFF));

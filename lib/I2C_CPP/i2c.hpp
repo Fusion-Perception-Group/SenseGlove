@@ -506,6 +506,11 @@ namespace i2c
          * @return uint8_t 
          */
         uint8_t read_byte(bool acknowledge=true) const override;
+        /**
+         * @brief raise exception if error occurred
+         * 
+         * @param end whether to end communication
+         */
         void raise_if_error(const bool end=true) const override;
 
         void set_clock_strech(bool enable) const noexcept;
@@ -521,15 +526,35 @@ namespace i2c
         void set_packet_error_checking(bool enable) const noexcept;
         bool get_packet_error_checking() const noexcept;
 
-        void set_event_interrupt(bool enable) const noexcept;
-        void set_event_buffer_interrupt(bool enable) const noexcept;
-        void set_error_interrupt(bool enable) const noexcept;
+        void enable_interrupt_event() const noexcept;
+        void disable_interrupt_event() const noexcept;
+        void enable_interrupt_event_buffer() const noexcept;
+        void disable_interrupt_event_buffer() const noexcept;
+        void enable_interrupt_error() const noexcept;
+        void disable_interrupt_error() const noexcept;
 
         void enable_interrupts() const noexcept
         {
-            set_event_interrupt(true);
-            set_event_buffer_interrupt(true);
-            set_error_interrupt(true);
+            enable_interrupt_event();
+            enable_interrupt_event_buffer();
+            enable_interrupt_error();
+        }
+        void disable_interrupts() const noexcept
+        {
+            nvic::disable_irq(ev_irqn);
+            // nvic::disable_interrupt_irq(err_irqn); // in disable_error()
+            disable_interrupt_event();
+            disable_interrupt_event_buffer();
+            disable_interrupt_error();
+        }
+        void set_irq_priority(const uint8_t ev_priority, const uint8_t err_priority) const
+        {
+            nvic::set_priority(ev_irqn, ev_priority);
+            nvic::set_priority(err_irqn, err_priority);
+        }
+        void set_irq_priority(const uint8_t priority=8) const
+        {
+            set_irq_priority(priority, priority);
         }
         void on_event_handler() const noexcept;
         void on_error_handler() const noexcept;

@@ -56,16 +56,16 @@ int main()
         auto i2c = i2c::SoftMaster(gpio::Pin(gpio::PortB, 7), gpio::Pin(gpio::PortB, 6));
         auto screen = ssd1306::I2CDisplay(i2c);
         screen.clear();
+        usart.write("Screen cleared\n");
         auto render = ssd1306::TexRender(screen);
-
-
-        auto &adc = adc::Adc1;
-        adc.init();
+        usart.write("Render created\n");
 
 
         while (true)
         {
             render.format_at(0, 0, "counter {:06}", pwm_tim.counter);
+            render.format_at(1, 0, "ch3 ccr {:06}", pwm_tim.channel3.capcomreg);
+            render.format_at(2, 0, "ch4 ccr {:06}", pwm_tim.channel4.capcomreg);
             clock::delay(50ms);
         }
     }

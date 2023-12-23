@@ -55,7 +55,7 @@ int main()
         render.format_at(0, 0, "Button pressed\n{} times!\n", ++count);
     };
 
-    button.enable_irq();
+    button.enable_interrupt();
     //auto hires_clk = std::chrono::high_resolution_clock();
     //auto now = hires_clk.now();
     try
@@ -70,7 +70,6 @@ int main()
         //};
         std::vector<uint8_t> data = {0x12, 0x34, 0x56, 0x78};
         flash::Flash.enable_interrupts();
-        flash::Flash.enable_irq();
         flash::Flash.write(addr, data);
         std::array<uint8_t, 4> vc2;
         flash::Flash.read(addr, vc2);

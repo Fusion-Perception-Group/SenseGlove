@@ -235,14 +235,14 @@ public:
     _BaudRate baudrate{*this};
     CallbackType on_transmit_complete;
     CallbackType on_transmit_ready;
-    CallbackType on_receive_ready;
-    CallbackType on_overrun;
+    CallbackType on_receive_ready;  // belongs to receive_related interrupt
     CallbackType on_clear_to_send;
     CallbackType on_idle_line;
     CallbackType on_parity_error;
-    CallbackType on_framing_error;
     CallbackType on_break_detected;
-    CallbackType on_noise;
+    CallbackType on_noise;  // belongs to multi_buffer_error interrupt
+    CallbackType on_framing_error;  // belongs to multi_buffer_error interrupt
+    CallbackType on_overrun;  // belongs to multi_buffer_error and receive_related interrupt
     HardUsart(detail::Register &reg, uint8_t order, nvic::IRQn_Type irqn) noexcept : reg(reg), order(order), irqn(irqn) {}
     HardUsart & operator=(const HardUsart &) = delete;
     void init() noexcept override;
@@ -259,12 +259,7 @@ public:
     WordLength get_word_length() const noexcept override;
     void break_transmission() noexcept override;
     size_t exchange_bytes(const void * send, size_t send_size, void * recv, size_t recv_size) override;
-    // size_t write(const void *data, size_t size) override;
-    // size_t write(std::string_view sv) override
-    // {
-    //     return write(reinterpret_cast<const uint8_t*>(sv.data()), sv.size());
-    // }
-    // size_t read(void *data, size_t size) override;
+
 
     /**
      * @brief Trade clock deviation tolerance for higher baudrate. Allow clock to reach FCLK/8 instead of FCLK/16.
@@ -292,7 +287,7 @@ public:
 
     void on_transmit_complete_handler() const noexcept;
     void on_transmit_ready_handler() const noexcept;
-    void on_receive_ready_handler() const noexcept;
+    void on_receive_related_handler() const noexcept;
     void on_overrun_handler() const noexcept;
     void on_clear_to_send_handler() const noexcept;
     void on_idle_line_handler() const noexcept;
@@ -300,37 +295,57 @@ public:
     void on_break_detected_handler() const noexcept;
     void on_multi_buffer_error_handler() const noexcept;
 
-    void set_transmit_complete_interrupt(bool on=true) const noexcept;
-    void set_transmit_ready_interrupt(bool on=true) const noexcept;
-    void set_receiver_interrupts(bool on=true) const noexcept;
-    void set_clear_to_send_interrupt(bool on=true) const noexcept;
-    void set_idle_line_interrupt(bool on=true) const noexcept;
-    void set_parity_error_interrupt(bool on=true) const noexcept;
-    void set_break_detected_interrupt(bool on=true) const noexcept;
-    void set_multi_buffer_error_interrupt(bool on=true) const noexcept;
+    void enable_interrupt_transmit_complete() const noexcept;
+    void enable_interrupt_transmit_ready() const noexcept;
+    void enable_interrupt_receive_related() const noexcept;
+    void enable_interrupt_clear_to_send() const noexcept;
+    void enable_interrupt_idle_line() const noexcept;
+    void enable_interrupt_parity_error() const noexcept;
+    void enable_interrupt_break_detected() const noexcept;
+    void enable_interrupt_multi_buffer_error() const noexcept;
+    void disable_interrupt_transmit_complete() const noexcept;
+    void disable_interrupt_transmit_ready() const noexcept;
+    void disable_interrupt_receive_related() const noexcept;
+    void disable_interrupt_clear_to_send() const noexcept;
+    void disable_interrupt_idle_line() const noexcept;
+    void disable_interrupt_parity_error() const noexcept;
+    void disable_interrupt_break_detected() const noexcept;
+    void disable_interrupt_multi_buffer_error() const noexcept;
 
     void enable_interrupts() const noexcept
     {
-        set_transmit_complete_interrupt();
-        set_transmit_ready_interrupt();
-        set_receiver_interrupts();
-        set_clear_to_send_interrupt();
-        set_idle_line_interrupt();
-        set_parity_error_interrupt();
-        set_break_detected_interrupt();
-        set_multi_buffer_error_interrupt();
+        enable_interrupt_transmit_complete();
+        enable_interrupt_transmit_ready();
+        enable_interrupt_receive_related();
+        enable_interrupt_clear_to_send();
+        enable_interrupt_idle_line();
+        enable_interrupt_parity_error();
+        enable_interrupt_break_detected();
+        enable_interrupt_multi_buffer_error();
+    }
+    void disable_interrupts() const noexcept
+    {
+        nvic::disable_irq(irqn);
+        disable_interrupt_transmit_complete();
+        disable_interrupt_transmit_ready();
+        disable_interrupt_receive_related();
+        disable_interrupt_clear_to_send();
+        disable_interrupt_idle_line();
+        disable_interrupt_parity_error();
+        disable_interrupt_break_detected();
+        disable_interrupt_multi_buffer_error();
     }
 
-    void enable_irq() const noexcept
+    void set_irq_priority(const uint8_t priority=8) const
     {
-        nvic::enable_irq(irqn);
+        nvic::set_priority(irqn, priority);
     }
 
     void global_interrupt_handler() const noexcept
     {
         on_transmit_complete_handler();
         on_transmit_ready_handler();
-        on_receive_ready_handler();
+        on_receive_related_handler();
         on_overrun_handler();
         on_clear_to_send_handler();
         on_idle_line_handler();

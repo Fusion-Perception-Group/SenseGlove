@@ -1,6 +1,7 @@
 #include <string>
 #include <chrono>
-#include "CLK_CFG.h"
+#include "mcu.hpp"
+#include "units.hpp"
 #include "time.hpp"
 #include "nvic.hpp"
 #include "gpio.hpp"
@@ -17,9 +18,6 @@ using std::string;
 
 int main()
 {
-    HAL_Init();
-    SystemClock_Config();
-
     using std::chrono::operator ""s;
     using std::chrono::operator ""ms;
     using std::chrono::operator ""ns;
@@ -30,11 +28,11 @@ int main()
     using gpio::PinConfig;
     using namespace gpio::ports;
 
-    HighResTimer timer;
+    mcu::init();
 
     Pin scl(PortB, 6), sda(PortB, 7);
     i2c::SoftMaster i2c(sda, scl);
-    timer.delay_ms(100);
+    clock::delay(100ms);
     ssd1306::I2CDisplay display(i2c);
     display.clear();
 
@@ -48,10 +46,9 @@ int main()
         int channel = 3;
         auto &adc = adc::Adc1;
         adc.init();
-        timer.delay_us(3);  // Wait for ADC to stabilize
+        clock::delay(3us);  // Wait for ADC to stabilize
         adc.set_sample_cycle(adc::SampleCycle::Cycles_56, channel);
         adc.enable_interrupts();
-        adc.enable_irq();
         // adc.on_injected_done = [&render, &adc, channel]()
         // {
         //     render.format_at(0, 0, "ADC: {}\n", adc.get_injected_data(channel));
@@ -79,9 +76,4 @@ int main()
     {
         render.format_at(0, 0, "Exception: {}\n", e.what());
     }
-}
-
-extern "C" void SysTick_Handler()
-{
-    HAL_IncTick();
 }

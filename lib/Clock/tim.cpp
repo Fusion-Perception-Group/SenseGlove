@@ -263,20 +263,6 @@ void BasicTimer::deinit() const noexcept
     disable_clock(*this);
 }
 
-void BasicTimer::enable_irq() const noexcept
-{
-    enable_clock(*this);
-    reg.DIER |= TIM_IT_UPDATE; // enable interrupt
-    reg.SR = ~TIM_IT_UPDATE; // clear pending interrupt
-    nvic::enable_irq(reload_irqn);
-}
-
-void BasicTimer::disable_irq() const noexcept
-{
-    nvic::disable_irq(reload_irqn);
-    reg.DIER &= ~TIM_IT_UPDATE; // disable interrupt
-}
-
 #define READONLY __attribute__((section(".rodata")))
 
 #ifdef TIM1_BASE
@@ -367,7 +353,7 @@ extern "C"
     void TIM1_BRK_TIM9_IRQHandler()
     {
         #ifdef TIM1_BASE
-        clock::Tim1.break_irq_handler();
+        clock::Tim1.on_break_irq_handler();
         #endif
         #ifdef TIM9_BASE
         clock::Tim9.global_irq_handler();
@@ -379,7 +365,7 @@ extern "C"
     void TIM1_TRG_COM_TIM11_IRQHandler()
     {
         #ifdef TIM1_BASE
-        clock::Tim1.trigger_com_irq_handler();
+        clock::Tim1.on_com_irq_handler();
         #endif
         #ifdef TIM11_BASE
         clock::Tim11.global_irq_handler();
@@ -390,7 +376,7 @@ extern "C"
     #if defined(TIM1_BASE)
     void TIM1_CC_IRQHandler()
     {
-        clock::Tim1.cc_irq_handler();
+        clock::Tim1.on_cc_irq_handler();
     }
     #endif
 

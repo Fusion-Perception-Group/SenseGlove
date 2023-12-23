@@ -53,7 +53,7 @@ int main()
         render.format_at(0, 0, "Button pressed\n{} times!\n", ++count);
     };
 
-    button.enable_irq();
+    button.enable_interrupt();
     auto hires_clk = std::chrono::high_resolution_clock();
     auto now = hires_clk.now();
     try

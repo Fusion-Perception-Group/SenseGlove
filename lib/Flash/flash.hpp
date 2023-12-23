@@ -221,27 +221,24 @@ public:
         return reg.ACR & 0xFU;
     }
 
-    void enable_on_error_interrupt() const noexcept;
-    void disable_on_error_interrupt() const noexcept;
-    void enable_on_complete_interrupt() const noexcept;
-    void disable_on_complete_interrupt() const noexcept;
+    void enable_interrupt_error() const noexcept;
+    void disable_interrupt_error() const noexcept;
+    void enable_interrupt_complete() const noexcept;
+    void disable_interrupt_complete() const noexcept;
     void enable_interrupts() const noexcept
     {
-        enable_on_error_interrupt();
-        enable_on_complete_interrupt();
+        enable_interrupt_error();
+        enable_interrupt_complete();
     }
     void disable_interrupts() const noexcept
     {
-        disable_on_error_interrupt();
-        disable_on_complete_interrupt();
-    }
-    void enable_irq() const noexcept
-    {
-        nvic::enable_irq(irqn);
-    }
-    void disable_irq() const noexcept
-    {
         nvic::disable_irq(irqn);
+        disable_interrupt_error();
+        disable_interrupt_complete();
+    }
+    void set_irq_priority(const uint8_t priority=8) const
+    {
+        nvic::set_priority(irqn, priority);
     }
 
     void clear_error() const noexcept;

@@ -328,25 +328,27 @@ void EmbeddedFlash::erase_all()
 }
 
 
-void EmbeddedFlash::enable_on_error_interrupt() const noexcept
+void EmbeddedFlash::enable_interrupt_error() const noexcept
 {
     unlock();
     detail::flash_reg.CR |= (1U << 25U);
     lock();
+    nvic::enable_irq(irqn);
 }
-void EmbeddedFlash::disable_on_error_interrupt() const noexcept
+void EmbeddedFlash::disable_interrupt_error() const noexcept
 {
     unlock();
     detail::flash_reg.CR &= ~(1U << 25U);
     lock();
 }
-void EmbeddedFlash::enable_on_complete_interrupt() const noexcept
+void EmbeddedFlash::enable_interrupt_complete() const noexcept
 {
     unlock();
     detail::flash_reg.CR |= (1U << 24U);
     lock();
+    nvic::enable_irq(irqn);
 }
-void EmbeddedFlash::disable_on_complete_interrupt() const noexcept
+void EmbeddedFlash::disable_interrupt_complete() const noexcept
 {
     unlock();
     detail::flash_reg.CR &= ~(1U << 24U);

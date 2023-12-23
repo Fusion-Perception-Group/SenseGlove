@@ -34,8 +34,6 @@ namespace clock
             return "Timeout";
         }
     };
-
-    inline std::function<void()> on_systick;
 }
 using clock::SystemCoreClock;
 }

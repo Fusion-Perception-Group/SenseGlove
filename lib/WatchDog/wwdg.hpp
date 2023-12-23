@@ -186,16 +186,18 @@ public:
     void enable_interrupt() const noexcept
     {
         reg.CFR |= 1U << 9;
+        nvic::enable_irq(nvic::WWDG_IRQn);
     }
 
     void disable_interrupt() const noexcept
     {
         reg.CFR &= ~(1U << 9);
+        nvic::disable_irq(nvic::WWDG_IRQn);
     }
 
-    void enable_irq() const noexcept
+    void set_irq_priority(const uint8_t priority=8) const
     {
-        nvic::enable_irq(nvic::WWDG_IRQn);
+        nvic::set_priority(nvic::WWDG_IRQn, priority);
     }
 };
 

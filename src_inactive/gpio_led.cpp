@@ -1,5 +1,5 @@
 #include <chrono>
-#include "CLK_CFG.h"
+#include "mcu.hpp"
 #include "time.hpp"
 #include "gpio.hpp"
 
@@ -10,9 +10,6 @@ using std::string;
 
 int main()
 {
-    HAL_Init();
-    SystemClock_Config();
-
     using std::chrono::operator ""ms;
     using std::chrono::operator ""ns;
     using namespace vermils;
@@ -22,7 +19,7 @@ int main()
     using gpio::PinConfig;
     using namespace gpio::ports;
 
-    HighResTimer timer;
+    mcu::init();
 
     PinConfig config(
         PinConfig::Output,
@@ -34,8 +31,8 @@ int main()
     while (true)
     {
         led.set();
-        timer.delay(100ms);
+        clock::delay(100ms);
         led.reset();
-        timer.delay(200ms);
+        clock::delay(200ms);
     }
 }

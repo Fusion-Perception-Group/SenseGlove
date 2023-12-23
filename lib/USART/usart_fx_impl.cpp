@@ -498,25 +498,28 @@ void HardUsart::raise_if_error() const
 {
     if (!(reg.SR & (USART_SR_NE | USART_SR_PE | USART_SR_FE | USART_SR_ORE)))
         return;
-    if (reg.SR & USART_SR_NE && !suppress_noise_error)
+    if (reg.SR & USART_SR_NE)
     {
         reg.SR &= ~USART_SR_NE;
-        throw NoiseError();
+        if (!suppress_noise_error)
+            throw NoiseError();
     }
-    if (reg.SR & USART_SR_PE && !suppress_parity_error)
+    if (reg.SR & USART_SR_PE)
     {
         reg.SR &= ~USART_SR_PE;
-        throw ParityError();
+        if (!suppress_parity_error)
+            throw ParityError();
     }
     if (reg.SR & USART_SR_FE)
     {
         reg.SR &= ~USART_SR_FE;
         throw FramingError();
     }
-    if (reg.SR & USART_SR_ORE && !suppress_overrun_error)
+    if (reg.SR & USART_SR_ORE)
     {
         reg.SR &= ~USART_SR_ORE;
-        throw OverrunError();
+        if (!suppress_overrun_error)
+            throw OverrunError();
     }
 }
 void HardUsart::set_transmitter(bool on) const noexcept
@@ -553,8 +556,10 @@ void HardUsart::set_flow_control(bool clear_to_send_on, bool request_to_send_on)
 
 void HardUsart::on_transmit_complete_handler() const noexcept
 try{
-    if (reg.SR & USART_SR_TC)
+    if (reg.CR1 & USART_CR1_TCIE
+        && reg.SR & USART_SR_TC)
     {
+        // won't clear TC flag, either by reading SR then write to DR or writing 0 manually (in multi-buffer mode)
         if (on_transmit_complete)
             on_transmit_complete();
     }
@@ -562,35 +567,31 @@ try{
 catch(...) {}
 void HardUsart::on_transmit_ready_handler() const noexcept
 try{
-    if (reg.SR & USART_SR_TXE)
+    if (reg.CR1 & USART_CR1_TXEIE
+        && reg.SR & USART_SR_TXE)
     {
+        // won't clear TXE flag, should be cleared by writing DR
         if (on_transmit_ready)
             on_transmit_ready();
     }
 }
 catch(...) {}
-void HardUsart::on_receive_ready_handler() const noexcept
+void HardUsart::on_receive_related_handler() const noexcept
 try{
-    if (reg.SR & USART_SR_RXNE)
+    if (reg.CR1 & USART_CR1_RXNEIE)
     {
-        if (on_receive_ready)
+        // won't clear RXNE flag, either by reading DR or writing 0 manually (in multi-buffer mode)
+        if (reg.SR & USART_SR_RXNE && on_receive_ready)
             on_receive_ready();
-    }
-}
-catch(...) {}
-void HardUsart::on_overrun_handler() const noexcept
-try{
-    if (reg.SR & USART_SR_ORE)
-    {
-        if (on_overrun)
-            on_overrun();
     }
 }
 catch(...) {}
 void HardUsart::on_clear_to_send_handler() const noexcept
 try{
-    if (reg.SR & USART_SR_CTS)
+    if (reg.CR3 & USART_CR3_CTSIE
+        && reg.SR & USART_SR_CTS)
     {
+        // won't clear CTS flag, should writing 0 manually
         if (on_clear_to_send)
             on_clear_to_send();
     }
@@ -598,8 +599,10 @@ try{
 catch(...) {}
 void HardUsart::on_idle_line_handler() const noexcept
 try{
-    if (reg.SR & USART_SR_IDLE)
+    if (reg.CR1 & USART_CR1_IDLEIE
+        && reg.SR & USART_SR_IDLE)
     {
+        // cleared by reading SR then reading DR
         if (on_idle_line)
             on_idle_line();
     }
@@ -607,8 +610,10 @@ try{
 catch(...) {}
 void HardUsart::on_parity_error_handler() const noexcept
 try{
-    if (reg.SR & USART_SR_PE)
+    if (reg.CR1 & USART_CR1_PEIE
+        && reg.SR & USART_SR_PE)
     {
+        // cleared by calling raise_if_error()
         if (on_parity_error)
             on_parity_error();
     }
@@ -616,9 +621,11 @@ try{
 catch(...) {}
 void HardUsart::on_break_detected_handler() const noexcept
 try{
-    if (reg.SR & USART_SR_LBD)
+    if (reg.CR2 & USART_CR2_LBDIE
+        && reg.SR & USART_SR_LBD)
     {
-        if (on_break_detected)
+        // cleared by writing 0 manually
+        if (on_break_detected && reg.CR2 & USART_CR2_LBDIE)
             on_break_detected();
     }
 }
@@ -631,66 +638,91 @@ try{
             on_noise();
         if (reg.SR & USART_SR_FE && on_framing_error)
             on_framing_error();
-        if (reg.SR & USART_SR_ORE && on_overrun)
+    }
+}
+catch(...) {}
+void HardUsart::on_overrun_handler() const noexcept
+try{
+    if ((reg.CR3 & USART_CR3_EIE || reg.CR1 & USART_CR1_RXNEIE)
+        && reg.SR & USART_SR_ORE)
+    {
+        // cleared by calling raise_if_error()
+        if (on_overrun)
             on_overrun();
     }
 }
 catch(...) {}
-void HardUsart::set_transmit_complete_interrupt(bool on) const noexcept
+void HardUsart::enable_interrupt_transmit_complete() const noexcept
 {
-    if (on)
-        reg.CR1 |= USART_CR1_TCIE;
-    else
-        reg.CR1 &= ~USART_CR1_TCIE;
+    reg.CR1 |= USART_CR1_TCIE;
+    nvic::enable_irq(irqn);
 }
-void HardUsart::set_transmit_ready_interrupt(bool on) const noexcept
+void HardUsart::disable_interrupt_transmit_complete() const noexcept
 {
-    if (on)
-        reg.CR1 |= USART_CR1_TXEIE;
-    else
-        reg.CR1 &= ~USART_CR1_TXEIE;
+    reg.CR1 &= ~USART_CR1_TCIE;
 }
-void HardUsart::set_receiver_interrupts(bool on) const noexcept
+void HardUsart::enable_interrupt_transmit_ready() const noexcept
 {
-    if (on)
-        reg.CR1 |= USART_CR1_RXNEIE;
-    else
-        reg.CR1 &= ~USART_CR1_RXNEIE;
+    reg.CR1 |= USART_CR1_TXEIE;
+    nvic::enable_irq(irqn);
 }
-void HardUsart::set_clear_to_send_interrupt(bool on) const noexcept
+void HardUsart::disable_interrupt_transmit_ready() const noexcept
 {
-    if (on)
-        reg.CR3 |= USART_CR3_CTSIE;
-    else
-        reg.CR3 &= ~USART_CR3_CTSIE;
+    reg.CR1 &= ~USART_CR1_TXEIE;
 }
-void HardUsart::set_idle_line_interrupt(bool on) const noexcept
+void HardUsart::enable_interrupt_receive_related() const noexcept
 {
-    if (on)
-        reg.CR1 |= USART_CR1_IDLEIE;
-    else
-        reg.CR1 &= ~USART_CR1_IDLEIE;
+    reg.CR1 |= USART_CR1_RXNEIE;
+    nvic::enable_irq(irqn);
 }
-void HardUsart::set_parity_error_interrupt(bool on) const noexcept
+void HardUsart::disable_interrupt_receive_related() const noexcept
 {
-    if (on)
-        reg.CR1 |= USART_CR1_PEIE;
-    else
-        reg.CR1 &= ~USART_CR1_PEIE;
+    reg.CR1 &= ~USART_CR1_RXNEIE;
 }
-void HardUsart::set_break_detected_interrupt(bool on) const noexcept
+void HardUsart::enable_interrupt_clear_to_send() const noexcept
 {
-    if (on)
-        reg.CR2 |= USART_CR2_LBDIE;
-    else
-        reg.CR2 &= ~USART_CR2_LBDIE;
+    reg.CR3 |= USART_CR3_CTSIE;
+    nvic::enable_irq(irqn);
 }
-void HardUsart::set_multi_buffer_error_interrupt(bool on) const noexcept
+void HardUsart::disable_interrupt_clear_to_send() const noexcept
 {
-    if (on)
-        reg.CR3 |= USART_CR3_EIE;
-    else
-        reg.CR3 &= ~USART_CR3_EIE;
+    reg.CR3 &= ~USART_CR3_CTSIE;
+}
+void HardUsart::enable_interrupt_idle_line() const noexcept
+{
+    reg.CR1 |= USART_CR1_IDLEIE;
+    nvic::enable_irq(irqn);
+}
+void HardUsart::disable_interrupt_idle_line() const noexcept
+{
+    reg.CR1 &= ~USART_CR1_IDLEIE;
+}
+void HardUsart::enable_interrupt_parity_error() const noexcept
+{
+    reg.CR1 |= USART_CR1_PEIE;
+    nvic::enable_irq(irqn);
+}
+void HardUsart::disable_interrupt_parity_error() const noexcept
+{
+    reg.CR1 &= ~USART_CR1_PEIE;
+}
+void HardUsart::enable_interrupt_break_detected() const noexcept
+{
+    reg.CR2 |= USART_CR2_LBDIE;
+    nvic::enable_irq(irqn);
+}
+void HardUsart::disable_interrupt_break_detected() const noexcept
+{
+    reg.CR2 &= ~USART_CR2_LBDIE;
+}
+void HardUsart::enable_interrupt_multi_buffer_error() const noexcept
+{
+    reg.CR3 |= USART_CR3_EIE;
+    nvic::enable_irq(irqn);
+}
+void HardUsart::disable_interrupt_multi_buffer_error() const noexcept
+{
+    reg.CR3 &= ~USART_CR3_EIE;
 }
 
 #ifdef USART1

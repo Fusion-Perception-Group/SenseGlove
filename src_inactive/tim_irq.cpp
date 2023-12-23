@@ -1,6 +1,6 @@
 #include <string>
 #include <chrono>
-#include "CLK_CFG.h"
+#include "mcu.hpp"
 #include "time.hpp"
 #include "nvic.hpp"
 #include "gpio.hpp"
@@ -13,9 +13,6 @@ using std::string;
 
 int main()
 {
-    HAL_Init();
-    SystemClock_Config();
-
     using std::chrono::operator ""s;
     using std::chrono::operator ""ms;
     using std::chrono::operator ""ns;
@@ -25,6 +22,8 @@ int main()
     using gpio::Pin;
     using gpio::PinConfig;
     using namespace gpio::ports;
+
+    mcu::init();
 
     PinConfig config(
         PinConfig::Output,
@@ -52,7 +51,7 @@ int main()
             tim.set_repetition(100);
         }
     };
-    tim.enable_irq();
+    tim.enable_interrupt_reload();
     tim.start();
 
     //render.render("Hello, world!\n", 0, 0);
@@ -60,9 +59,4 @@ int main()
     while (true)
     {
     }
-}
-
-extern "C" void SysTick_Handler()
-{
-    HAL_IncTick();
 }

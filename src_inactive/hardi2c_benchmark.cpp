@@ -14,11 +14,6 @@
 #define LED_PIN 13
 #define LED_GPIO_PORT PortC
 
-#define BUTTON_PIN GPIO_PIN_0
-#define BUTTON_GPIO_PORT GPIOB
-
-void BUTTON_Init();
-
 using std::string;
 
 int main()
