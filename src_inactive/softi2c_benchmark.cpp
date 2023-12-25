@@ -39,11 +39,7 @@ int main()
     Pin led(LED_GPIO_PORT, LED_PIN, config);
 
     Pin scl(PortB, 6), sda(PortB, 7);
-    PinConfig i2ccfg(PinConfig::AF, PinConfig::VeryHigh, PinConfig::OpenDrain);
-    i2ccfg.alternate = 4;
-    scl.load(i2ccfg);
-    sda.load(i2ccfg);
-    i2c::SoftMaster i2c(sda, scl);
+    i2c::SoftMaster i2c(sda, scl, 0);
     uint32_t start = timer.get_cycles(), test_size=1000;
     
     i2c.select(0x78, false);

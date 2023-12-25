@@ -5,6 +5,8 @@
 #include "units.hpp"
 #include "ssd1306.hpp"
 #include "texrender.hpp"
+#include "w25qxx.hpp"
+#include "wit.hpp"
 
 using namespace vermils;
 using namespace stm32;
@@ -79,6 +81,24 @@ int main()
         adc.set_dma_mode(true);
         adc.set_continuous(true);
         adc.start_regular();
+
+        gpio::PinConfig spi_cfg(
+            gpio::PinConfig::AF,
+            gpio::PinConfig::VeryHigh,
+            gpio::PinConfig::PushPull,
+            5  // SPI1 Alternate Function
+        );
+        spi_cfg.pull = gpio::PinConfig::NoPull;
+        gpio::Pin sck(gpio::PortA, 5, spi_cfg),
+            miso(gpio::PortA, 6, spi_cfg),
+            mosi(gpio::PortA, 7, spi_cfg),
+            cs(gpio::PortA, 4);
+        auto &spi = spi::Spi1;
+        spi.init();
+        auto flash = w25qxx::Flash(spi, cs);
+
+        auto posensor = wit::I2CSensor(i2c);
+        posensor.set_report_rate(wit::ReportRate::None);
 
         // ############################ Main Loop ############################
         

@@ -14,7 +14,7 @@
 #include "macro.h"
 
 #define __I2C_NOP asm("NOP");
-#define __I2C_SCL_DELAY REP(0, 0, 8, __I2C_NOP);
+#define __I2C_SCL_DELAY REP(0, 4, 0, __I2C_NOP);
 #define __I2C_COM_DELAY if (delay_us) clock::delay(delay_us);
 
 namespace vermils
@@ -213,10 +213,30 @@ namespace i2c
             
             return size;
         }
+        std::vector<addr_t> scan(const addr_t start=0x0, const addr_t end=0xFE) const
+        {
+            std::vector<addr_t> addrs;
+            for (addr_t addr = start; addr <= end; addr+=2)
+            {
+                if (select(addr, false))
+                {
+                    addrs.push_back(addr);
+                }
+                this->end();
+            }
+            return addrs;
+        }
         template <typename T>
         void put(addr_t addr, const T &data) const requires(std::is_trivially_copyable_v<T>)
         {
             write_bytes(addr, reinterpret_cast<const uint8_t *>(&data), sizeof(T));
+        }
+        template <typename T>
+        T get(addr_t addr) const requires(std::is_trivially_copyable_v<T>)
+        {
+            T data;
+            read_bytes(addr, reinterpret_cast<uint8_t *>(&data), sizeof(T));
+            return data;
         }
         template <typename T>
         void get(addr_t addr, T &data) const requires(std::is_trivially_copyable_v<T>)

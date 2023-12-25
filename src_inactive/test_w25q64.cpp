@@ -3,14 +3,9 @@
 #include <chrono>
 #include "mcu.hpp"
 #include "units.hpp"
-#include "time.hpp"
-#include "nvic.hpp"
-#include "gpio.hpp"
-#include "i2c.hpp"
 #include "ssd1306.hpp"
 #include "texrender.hpp"
 #include "ffmt.hpp"
-#include "adc.hpp"
 #include "w25qxx.hpp"
 
 #define LED_PIN 13
@@ -20,12 +15,8 @@ using std::string;
 
 int main()
 {
-    using std::chrono::operator ""s;
-    using std::chrono::operator ""ms;
-    using std::chrono::operator ""ns;
     using namespace vermils;
     using namespace stm32;
-    using time::HighResTimer;
     using gpio::Pin;
     using gpio::PinConfig;
     using namespace gpio::ports;

@@ -70,7 +70,6 @@ namespace i2c
 
     bool SoftMaster::select(addr_t address, const bool read) const noexcept
     {
-        end();
         if (start_byte)
         {
             _start();
