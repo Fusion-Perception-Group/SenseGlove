@@ -28,6 +28,7 @@ int main()
 
     try
     {
+        // ############################ Setup ############################
         gpio::PinConfig pwm_config(
             gpio::PinConfig::AF,
             gpio::PinConfig::VeryHigh,
@@ -58,11 +59,29 @@ int main()
         screen.clear();
         auto render = ssd1306::TexRender(screen);
 
-
+        auto adc_config = gpio::PinConfig(gpio::PinConfig::Analog, gpio::PinConfig::NoPull);
+        gpio::Pin adc1_pin(gpio::PortA, 1, adc_config);
+        gpio::Pin adc2_pin(gpio::PortA, 2, adc_config);
+        gpio::Pin adc3_pin(gpio::PortA, 3, adc_config);
+        gpio::Pin adc4_pin(gpio::PortA, 4, adc_config);
         auto &adc = adc::Adc1;
         adc.init();
+        uint16_t flex_buffer[4]={0};
+        clock::delay(3us);  // Wait for ADC to stabilize
+        adc.set_scan_mode(true);
+        adc.config_regular_sequence(
+            std::tuple{1, adc::SampleCycle::Cycles_56},
+            std::tuple{2, adc::SampleCycle::Cycles_56},
+            std::tuple{3, adc::SampleCycle::Cycles_56},
+            std::tuple{4, adc::SampleCycle::Cycles_56}
+            );
+        adc.config_dma(flex_buffer, dma::UnitSize::HalfWord, true);
+        adc.set_dma_mode(true);
+        adc.set_continuous(true);
+        adc.start_regular();
 
-
+        // ############################ Main Loop ############################
+        
         while (true)
         {
             render.format_at(0, 0, "counter {:06}", pwm_tim.counter);
@@ -78,11 +97,7 @@ int main()
         usart.write("Unknown exception\n");
     }
 
-    while (true)
-    {
-        usart.write("End Looping\n");
-        clock::delay(10s);
-    }
+    clock::rcc::reset_system();
 
     return 0;
 }

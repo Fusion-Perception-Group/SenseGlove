@@ -412,6 +412,8 @@ void EmbeddedFlash::raise_if_error(bool clear) const
 }
 void EmbeddedFlash::on_error_handler() const noexcept
 try{
+    if (not (detail::flash_reg.CR & (1U << 25U)))
+        return ;
     try{
         raise_if_error(false);
     }
@@ -425,7 +427,7 @@ try{
 catch(...) {}
 void EmbeddedFlash::on_complete_handler() const noexcept
 try{
-    if (detail::flash_reg.SR & 1U)
+    if (detail::flash_reg.SR & 1U and detail::flash_reg.CR & (1U << 24U))
     {
         detail::flash_reg.SR = 1U; // clear flag
         if (on_complete)

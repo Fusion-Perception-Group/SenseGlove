@@ -2,11 +2,13 @@
 
 #include <stdexcept>
 #include <cstdint>
+#include <tuple>
 #include "property.hpp"
 #include "nvic.hpp"
 #include "userconfig.hpp"
 #include "block_future.hpp"
 #include "rcc.hpp"
+#include "dma.hpp"
 
 namespace vermils
 {
@@ -87,6 +89,38 @@ enum class Resolution
     Bits_6 = 3,
 };
 
+enum class TriggerEvent : uint8_t
+{
+    #ifdef VERMIL_STM32F411
+    Timer1CapCom1 = 0x00,
+    Timer1CapCom2 = 0x01,
+    Timer1CapCom3 = 0x02,
+    Timer2CapCom2 = 0x03,
+    Timer2CapCom3 = 0x04,
+    Timer2CapCom4 = 0x05,
+    Timer2Trgo = 0x06,
+    Timer3CapCom1 = 0x07,
+    Timer3Trgo = 0x08,
+    Timer4CapCom4 = 0x09,
+    Timer5CapCom1 = 0x0A,
+    Timer5CapCom2 = 0x0B,
+    Timer5CapCom3 = 0x0C,
+    ExtiLine11 = 0x0F,
+    #endif
+};
+
+class ADCError : public std::runtime_error
+{
+public:
+    ADCError(const char *msg = "ADC Error") : std::runtime_error(msg) {}
+};
+
+class Overrun : public ADCError
+{
+public:
+    Overrun() : ADCError("ADC Overrun") {}
+};
+
 class RegularADC
 {
 public:
@@ -107,8 +141,23 @@ public:
     }
     void deinit() const noexcept
     {
-        clock::rcc::disable_clock(*this);
         reg.CR2 &= ~1U;
+        clock::rcc::disable_clock(*this);
+    }
+
+    void halt() const noexcept
+    {
+        reg.CR2 &= ~1U;
+    }
+
+    bool is_halted() const noexcept
+    {
+        return !(reg.CR2 & 1U);
+    }
+
+    void resume() const noexcept
+    {
+        reg.CR2 |= 1U;
     }
 
     void start_regular() const noexcept
@@ -121,9 +170,24 @@ public:
         reg.CR2 &= ~(1U << 30);
     }
 
-    bool is_regular_running() const noexcept
+    bool is_regular_started() const noexcept
     {
         return reg.SR & 0x10U;
+    }
+
+    void clear_regular_started() const noexcept
+    {
+        reg.SR &= ~0x10U;
+    }
+
+    bool is_regular_done() const noexcept
+    {
+        return reg.SR & 0x2U;
+    }
+
+    void clear_regular_done() const noexcept
+    {
+        reg.SR &= ~0x2U;
     }
 
     void set_regular_trigger_mode(ExternTriggerMode mode) const noexcept
@@ -137,16 +201,21 @@ public:
         return static_cast<ExternTriggerMode>((reg.CR2 >> 28) & 0x3U);
     }
 
-    void select_regular_trigger_channel(uint8_t channel) const
+    void select_regular_trigger_event(uint8_t event) const
     {
-        if (channel > 15)
-            throw std::invalid_argument("channel out of range");
+        if (event > 15)
+            throw std::invalid_argument("invalid event");
         reg.CR2 &= ~(0xFU << 24);
     }
 
-    uint8_t get_regular_trigger_channel() const noexcept
+    void select_regular_trigger_event(TriggerEvent event) const
     {
-        return (reg.CR2 >> 24) & 0xFU;
+        select_regular_trigger_event(static_cast<uint8_t>(event));
+    }
+
+    TriggerEvent get_regular_trigger_event() const noexcept
+    {
+        return static_cast<TriggerEvent>((reg.CR2 >> 24) & 0xFU);
     }
 
     void set_left_aligned(bool left_aligned) const noexcept
@@ -175,15 +244,20 @@ public:
         return (reg.CR2 >> 10) & 1U;
     }
 
-    void set_dma_disabled(bool disabled) const noexcept  // only work for single ADC
+    /**
+     * @brief Set the dma singleshot mode
+     * 
+     * @param on only trigger DMA once when DMA is enabled
+     */
+    void set_dma_singleshot(bool on) const noexcept  // only work for single mode ADC
     {
-        if (disabled)
+        if (!on)
             reg.CR2 |= 1U << 9;
         else
             reg.CR2 &= ~(1U << 9);
     }
 
-    bool is_dma_disabled() const noexcept
+    bool is_dma_singleshot() const noexcept
     {
         return (reg.CR2 >> 9) & 1U;
     }
@@ -199,6 +273,61 @@ public:
     bool is_dma_mode() const noexcept
     {
         return (reg.CR2 >> 8) & 1U;
+    }
+
+    void config_dma(
+        const dma::BaseDMA::Stream &stream,
+        const uint8_t channel,
+        void * const dst_addr,
+        const dma::UnitSize dst_unit_size,
+        const bool dst_inc,
+        const dma::Priority priority = dma::Priority::High,
+        const bool single_shot = false,
+        const bool direct = true,
+        const bool enable_stream_now = true
+        // const dma::FIFOThreshold fifo_threshold = dma::FIFOThreshold::Full,
+        // const dma::BurstMode burst_mode = dma::BurstMode::Incr8,
+        // const bool double_buffer = false,
+        // void * const dbuf_addr = nullptr
+    ) const
+    {
+        set_dma_singleshot(single_shot);
+        stream.dma.init();
+        stream.src_addr = (void *)(&reg.DR);
+        stream.dst_addr = dst_addr;
+        stream.select_channel(channel);
+        stream.set_use_peri_flow_controller(false);
+        stream.count = get_regular_sequence_len();
+        stream.set_circular_mode(true);
+        stream.set_src_unit_size(dma::UnitSize::HalfWord);
+        stream.set_dst_unit_size(dst_unit_size);
+        stream.set_src_inc(false);
+        stream.set_dst_inc(dst_inc);
+        stream.set_priority(priority);
+        stream.set_direct_mode(direct);
+        stream.enable();
+    }
+
+    void config_dma(
+        void * const dst_addr,
+        const dma::UnitSize dst_unit_size,
+        const bool dst_inc,
+        const dma::Priority priority = dma::Priority::High,
+        const bool single_shot = false,
+        const bool direct = true,
+        const bool enable_stream_now = true
+        // const dma::FIFOThreshold fifo_threshold = dma::FIFOThreshold::Full,
+        // const dma::BurstMode burst_mode = dma::BurstMode::Incr8,
+        // const bool double_buffer = false,
+        // void * const dbuf_addr = nullptr
+    ) const
+    {
+        #ifdef VERMIL_STM32F411
+        config_dma(dma::Dma2.streams[0], 0,
+            dst_addr, dst_unit_size, dst_inc, priority, single_shot, direct, enable_stream_now);
+        #else
+        throw std::not_implemented("default DMA not implemented");
+        #endif
     }
 
     void set_continuous(bool on) const noexcept
@@ -303,6 +432,38 @@ public:
             return (reg.SQR1 >> shift) & 0x1FU;
     }
 
+    template <size_t init_order>
+    void config_regular_sequence() const {}
+    /**
+     * @brief config regular sequence
+     * 
+     * @tparam init_order order for the first channel
+     * @param channels channels in conversion order
+     */
+    template <size_t init_order=0, typename... ARGS>
+    void config_regular_sequence(uint8_t channel, ARGS... args) const
+    {
+        static_assert(sizeof...(ARGS) + 1 <= 16, "too many channels");
+        static_assert(init_order < 16, "channel order is too high");
+        set_regular_sequence(init_order, channel);
+        config_regular_sequence<init_order+1>(args...);
+    }
+    /**
+     * @brief config regular sequence
+     * 
+     * @tparam init_order order for the first channel
+     * @param cfg tuple<channel, sample_cycle> in conversion order
+     */
+    template <size_t init_order=0, typename... ARGS>
+    void config_regular_sequence(std::tuple<uint8_t, SampleCycle> cfg, ARGS... args) const
+    {
+        static_assert(sizeof...(ARGS) + 1 <= 16, "too many channels");
+        static_assert(init_order < 16, "channel order is too high");
+        set_regular_sequence(init_order, std::get<0>(cfg));
+        set_sample_cycle(std::get<1>(cfg), std::get<0>(cfg));
+        config_regular_sequence<init_order+1>(args...);
+    }
+
     uint16_t get_regular_data() const noexcept
     {
         return reg.DR;
@@ -319,14 +480,11 @@ public:
         return static_cast<Resolution>((reg.CR1 >> 24) & 0x3U);
     }
 
-    void set_regular_analog_watchdog(bool on) const noexcept
-    {
-        if (on)
-            reg.CR1 |= 1U << 23;
-        else
-            reg.CR1 &= ~(1U << 23);
-    }
-
+    /**
+     * @brief Discontinuous mode will convert first n(n<=8) channels in sequence, then stop
+     * 
+     * @param len 
+     */
     void set_discontinuous_mode(uint8_t len) const
     {
         if (len > 8)
@@ -353,12 +511,20 @@ public:
         return (reg.CR1 >> 11) & 1U;
     }
 
-    bool is_regular_analog_watchdog() const noexcept
+    void set_regular_watchdog(bool on) const noexcept
+    {
+        if (on)
+            reg.CR1 |= 1U << 23;
+        else
+            reg.CR1 &= ~(1U << 23);
+    }
+
+    bool is_regular_watchdog() const noexcept
     {
         return (reg.CR1 >> 23) & 1U;
     }
 
-    void set_analog_watchdog_single_channel_in_scan(bool on) const noexcept
+    void set_watchdog_single_mode(bool on) const noexcept
     {
         if (on)
             reg.CR1 |= 1U << 9;
@@ -366,12 +532,17 @@ public:
             reg.CR1 &= ~(1U << 9);
     }
 
-    bool is_analog_watchdog_single_channel_in_scan() const noexcept
+    bool is_watchdog_single_mode() const noexcept
     {
         return (reg.CR1 >> 9) & 1U;
     }
 
-    void set_analog_watchdog_channel(uint8_t channel) const
+    /**
+     * @brief Set the watchdog channel used in single mode
+     * 
+     * @param channel
+     */
+    void set_watchdog_channel(uint8_t channel) const
     {
         if (channel > 17)
             throw std::invalid_argument("channel out of range");
@@ -379,7 +550,12 @@ public:
         reg.CR1 |= channel;
     }
 
-    uint8_t get_analog_watchdog_channel() const noexcept
+    /**
+     * @brief Get the watchdog channel used in single mode
+     * 
+     * @return uint8_t 
+     */
+    uint8_t get_watchdog_channel() const noexcept
     {
         return reg.CR1 & 0x1FU;
     }
@@ -395,6 +571,16 @@ public:
     bool is_scan_mode() const noexcept
     {
         return (reg.CR1 >> 8) & 1U;
+    }
+
+    void raise_if_error() const
+    {
+        const uint32_t mask = 0x4U;
+        if (reg.SR & mask)
+        {
+            reg.SR &= ~mask;
+            throw Overrun();
+        }
     }
 
     void enable_interrupt_overrun() const noexcept
@@ -413,19 +599,19 @@ public:
     }
     void disable_interrupt_regular_done() const noexcept { reg.CR1 &= ~(1U << 5); }
 
-    void enable_interrupt_analog_watchdog() const noexcept
+    void enable_interrupt_watchdog() const noexcept
     {
         reg.CR1 |= 1U << 6;
         reg.SR &= ~0x1U; // clear watchdog flag
         nvic::enable_irq(ADC_IRQn);
     }
-    void disable_interrupt_analog_watchdog() const noexcept { reg.CR1 &= ~(1U << 6); }
+    void disable_interrupt_watchdog() const noexcept { reg.CR1 &= ~(1U << 6); }
 
     virtual void enable_interrupts() const noexcept
     {
         enable_interrupt_overrun();
         enable_interrupt_regular_done();
-        enable_interrupt_analog_watchdog();
+        enable_interrupt_watchdog();
     }
 
     virtual void disable_interrupts() const noexcept
@@ -433,16 +619,16 @@ public:
         nvic::disable_irq(ADC_IRQn);
         disable_interrupt_overrun();
         disable_interrupt_regular_done();
-        disable_interrupt_analog_watchdog();
+        disable_interrupt_watchdog();
     }
 
     void on_regular_done_handler() const noexcept
     try{
         const uint32_t mask = 0x2U;
-        if (reg.SR & mask)
+        if (reg.CR1 & (1U << 5) && reg.SR & mask)
         {
             reg.SR &= ~mask;
-            if (reg.CR1 & (1U << 5) && on_regular_done)
+            if (on_regular_done)
                 on_regular_done();
         }
     }
@@ -451,10 +637,10 @@ public:
     void on_watchdog_handler() const noexcept
     try{
         const uint32_t mask = 0x1U;
-        if (reg.SR & mask)
+        if (reg.CR1 & (1U << 6) && reg.SR & mask)
         {
             reg.SR &= ~mask;
-            if (reg.CR1 & (1U << 6) && on_watchdog)
+            if (on_watchdog)
                 on_watchdog();
         }
     }
@@ -463,10 +649,10 @@ public:
     void on_overrun_handler() const noexcept
     try{
         const uint32_t mask = 0x4U;
-        if (reg.SR & mask)
+        if (reg.CR1 & (1U << 26) && reg.SR & mask)
         {
             reg.SR &= ~mask;
-            if (reg.CR1 & (1U << 26) && on_overrun)
+            if (on_overrun)
                 on_overrun();
         }
     }
@@ -506,10 +692,10 @@ public:
      * @brief Get the injected data by order
      * 
      * @param order 
-     * @return uint16_t 
+     * @return int16_t because of the offset, the data could be negative
      * @throw std::invalid_argument if order is out of range
      */
-    uint16_t get_injected_data(uint8_t order) const
+    int16_t get_injected_data(uint8_t order) const
     {
         switch (order)
         {
@@ -526,9 +712,24 @@ public:
         }
     }
 
-    bool is_injected_running() const noexcept
+    bool is_injected_done() const noexcept
+    {
+        return reg.SR & 0x4U;
+    }
+
+    void clear_injected_done() const noexcept
+    {
+        reg.SR &= ~0x4U;
+    }
+
+    bool is_injected_started() const noexcept
     {
         return reg.SR & 0x8U;
+    }
+
+    void clear_injected_started() const noexcept
+    {
+        reg.SR &= ~0x8U;
     }
 
     void set_injected_trigger_mode(ExternTriggerMode mode) const noexcept
@@ -542,23 +743,34 @@ public:
         return static_cast<ExternTriggerMode>((reg.CR2 >> 20) & 0x3U);
     }
 
-    void select_injected_trigger_channel(uint8_t channel) const
+    void select_injected_trigger_event(uint8_t event) const
     {
-        if (channel > 15)
-            throw std::invalid_argument("channel out of range");
+        if (event > 15)
+            throw std::invalid_argument("event out of range");
         reg.CR2 &= ~(0xFU << 16);
     }
 
-    uint8_t get_injected_trigger_channel() const noexcept
+    void select_injected_trigger_event(TriggerEvent event) const
     {
-        return (reg.CR2 >> 16) & 0xFU;
+        select_injected_trigger_event(static_cast<uint8_t>(event));
     }
 
-    void set_offset(uint8_t channel, uint16_t offset) const
+    TriggerEvent get_injected_trigger_event() const noexcept
+    {
+        return static_cast<TriggerEvent>((reg.CR2 >> 16) & 0xFU);
+    }
+
+    /**
+     * @brief Set the offset, which is subtracted from the raw data
+     * 
+     * @param offset 
+     * @param order order in injected sequence
+     */
+    void set_offset( uint16_t offset, uint8_t order) const
     {
         if (offset > 0xFFFU)
             throw std::invalid_argument("offset out of range");
-        switch (channel)
+        switch (order)
         {
         case 0:
             reg.JOFR1 = offset;
@@ -573,13 +785,13 @@ public:
             reg.JOFR4 = offset;
             break;
         default:
-            throw std::invalid_argument("channel out of range");
+            throw std::invalid_argument("order out of range");
         }
     }
 
-    uint16_t get_offset(uint8_t channel) const
+    uint16_t get_offset(uint8_t order) const
     {
-        switch (channel)
+        switch (order)
         {
         case 0:
             return reg.JOFR1;
@@ -590,7 +802,7 @@ public:
         case 3:
             return reg.JOFR4;
         default:
-            throw std::invalid_argument("channel out of range");
+            throw std::invalid_argument("order out of range");
         }
     }
 
@@ -627,7 +839,58 @@ public:
         return (reg.JSQR >> shift) & 0x1FU;
     }
 
-    void set_injected_analog_watchdog(bool on) const noexcept
+    template <size_t init_order>
+    void config_injected_sequence() const {}
+    /**
+     * @brief config injected sequence
+     * 
+     * @tparam init_order order for the first channel
+     * @param channels channels in conversion order
+     */
+    template <size_t init_order=0, typename... ARGS>
+    void config_injected_sequence(uint8_t channel, ARGS... args) const
+    {
+        static_assert(sizeof...(ARGS) + 1 <= 4, "too many channels");
+        static_assert(init_order < 16, "channel order is too high");
+
+        set_injected_sequence(init_order, channel);
+        config_injected_sequence<init_order+1>(args...);
+    }
+    /**
+     * @brief config injected sequence
+     * 
+     * @tparam init_order order for the first channel
+     * @param cfg tuple<channel, sample_cycle> in conversion order
+     */
+    template <size_t init_order=0, typename... ARGS>
+    void config_injected_sequence(std::tuple<uint8_t, SampleCycle> cfg, ARGS... args) const
+    {
+        static_assert(sizeof...(ARGS) + 1 <= 4, "too many channels");
+        static_assert(init_order < 16, "channel order is too high");
+
+        set_injected_sequence(init_order, std::get<0>(cfg));
+        set_sample_cycle(std::get<1>(cfg), std::get<0>(cfg));
+        config_injected_sequence<init_order+1>(args...);
+    }
+    /**
+     * @brief config injected sequence
+     * 
+     * @tparam init_order order for the first channel
+     * @param cfg tuple<channel, sample_cycle, offset> in conversion order
+     */
+    template <size_t init_order=0, typename... ARGS>
+    void config_injected_sequence(std::tuple<uint8_t, SampleCycle, uint16_t> cfg, ARGS... args) const
+    {
+        static_assert(sizeof...(ARGS) + 1 <= 4, "too many channels");
+        static_assert(init_order < 16, "channel order is too high");
+
+        set_injected_sequence(init_order, std::get<0>(cfg));
+        set_sample_cycle(std::get<1>(cfg), std::get<0>(cfg));
+        set_offset(std::get<2>(cfg), init_order);
+        config_injected_sequence<init_order+1>(args...);
+    }
+
+    void set_injected_watchdog(bool on) const noexcept
     {
         if (on)
             reg.CR1 |= 1U << 22;
@@ -635,7 +898,7 @@ public:
             reg.CR1 &= ~(1U << 22);
     }
 
-    bool is_injected_analog_watchdog() const noexcept
+    bool is_injected_watchdog() const noexcept
     {
         return (reg.CR1 >> 22) & 1U;
     }
@@ -689,7 +952,7 @@ public:
     void on_injected_done_handler() const noexcept
     try{
         const uint32_t mask = 0x4U;
-        if (reg.SR & mask)
+        if (reg.CR1 & 1U << 7 && reg.SR & mask)
         {
             reg.SR &= ~mask;
             if (on_injected_done)

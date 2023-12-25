@@ -113,6 +113,31 @@ enum class FIFOThreshold
     Full = 3
 };
 
+class DMAError : public std::runtime_error
+{
+public:
+    using std::runtime_error::runtime_error;
+};
+
+class TransferError : public DMAError
+{
+public:
+    TransferError(const char *msg = "DMA Transfer Error") : DMAError(msg) {}
+};
+
+class DirectModeError : public DMAError
+{
+public:
+    DirectModeError(const char *msg = "Direct Mode Error") : DMAError(msg) {}
+};
+
+class FIFOError : public DMAError
+{
+public:
+    FIFOError(const char *msg = "FIFO Error") : DMAError(msg) {}
+};
+
+
 /**
  * @brief Get the addr type regarding to the address and STM32 mem-map convention
  * 
@@ -290,8 +315,8 @@ public:
         {
             return reg.CR & (1 << 9);
         }
-        BaseDMA &_dma;
     public:
+        BaseDMA &dma;
         const uint8_t order;
         detail::_DMAStreamReg & reg;
         const nvic::IRQn_Type irqn;
@@ -307,7 +332,7 @@ public:
         _Enabled &busy = enabled;
         _Count count{*this};
 
-        Stream(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : _dma(dma), order(order), reg(reg), irqn(irqn) {}
+        Stream(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : dma(dma), order(order), reg(reg), irqn(irqn) {}
         virtual ~Stream() = default;
         Stream & operator=(const Stream &) = delete;
 
@@ -319,9 +344,9 @@ public:
         void enable() const noexcept
         {
             if (order < 4)  // clear related event flags before enabling stream
-                _dma.reg.LIFCR |= (0x3D << (6 * (order % 2) + 16 * (order % 4 > 2)));
+                dma.reg.LIFCR |= (0x3D << (6 * (order % 2) + 16 * (order % 4 > 2)));
             else
-                _dma.reg.HIFCR |= (0x3D << (6 * (order % 2) + 16 * (order % 4 > 2)));
+                dma.reg.HIFCR |= (0x3D << (6 * (order % 2) + 16 * (order % 4 > 2)));
             reg.CR |= 1U;
         }
 
@@ -596,10 +621,10 @@ public:
         void on_fifo_err_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x1U << (6 * (order % 2) + 16 * (order % 4 > 2));
-            if (*ifsr & mask)
+            if (reg.FCR & (1 << 7) && *ifsr & mask)
             {
-                *ifclr |= mask;
-                if (reg.FCR & (1 << 7) && on_fifo_error)
+                *ifclr = mask;
+                if (on_fifo_error)
                     on_fifo_error();
             }
         }
@@ -607,10 +632,10 @@ public:
         void on_direct_mode_err_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x4U << (6 * (order % 2) + 16 * (order % 4 > 2));
-            if (*ifsr & mask)
+            if (reg.CR & (1 << 1) && *ifsr & mask)
             {
-                *ifclr |= mask;
-                if (reg.CR & (1 << 1) && on_direct_mode_error)
+                *ifclr = mask;
+                if (on_direct_mode_error)
                     on_direct_mode_error();
             }
         }
@@ -618,10 +643,10 @@ public:
         void on_transfer_err_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x8U << (6 * (order % 2) + 16 * (order % 4 > 2));
-            if (*ifsr & mask)
+            if (reg.CR & (1 << 2) && *ifsr & mask)
             {
-                *ifclr |= mask;
-                if (reg.CR & (1 << 2) && on_transfer_error)
+                *ifclr = mask;
+                if (on_transfer_error)
                     on_transfer_error();
             }
         }
@@ -629,10 +654,10 @@ public:
         void on_half_complete_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x10U << (6 * (order % 2) + 16 * (order % 4 > 2));
-            if (*ifsr & mask)
+            if (reg.CR & (1 << 3) && *ifsr & mask)
             {
-                *ifclr |= mask;
-                if (reg.CR & (1 << 3) && on_half_complete)
+                *ifclr = mask;
+                if (on_half_complete)
                     on_half_complete();
             }
         }
@@ -640,14 +665,39 @@ public:
         void on_complete_handler(volatile uint32_t * ifclr, volatile uint32_t * ifsr) const noexcept
         try{
             const uint32_t mask = 0x20U << (6 * (order % 2) + 16 * (order % 4 > 2));
-            if (*ifsr & mask)
+            if (reg.CR & (1 << 4) && *ifsr & mask)
             {
                 *ifclr |= mask;
-                if (reg.CR & (1 << 4) && on_complete)
+                if (on_complete)
                     on_complete();
             }
         }
         catch(...) {}
+
+        void raise_if_error() const
+        {
+            volatile uint32_t &sr = (order < 4) ? dma.reg.LISR : dma.reg.HISR;
+            volatile uint32_t &clr = (order < 4) ? dma.reg.LIFCR : dma.reg.HIFCR;
+            const unsigned SHIFT = 6 * (order % 2) + 16 * (order % 4 > 2);
+            const uint32_t FIFO_ERR_MASK = 0x1U << SHIFT;
+            const uint32_t DIR_ERR_MASK = 0x4U << SHIFT;
+            const uint32_t TRANS_ERR_MASK = 0x8U << SHIFT;
+            if (sr & TRANS_ERR_MASK)
+            {
+                clr = TRANS_ERR_MASK;
+                throw TransferError();
+            }
+            if (sr & FIFO_ERR_MASK)
+            {
+                clr = FIFO_ERR_MASK;
+                throw FIFOError();
+            }
+            if (sr & DIR_ERR_MASK)
+            {
+                clr = DIR_ERR_MASK;
+                throw DirectModeError();
+            }
+        }
 
         void global_irq_handler() const noexcept
         {
@@ -655,13 +705,13 @@ public:
             volatile uint32_t * ifsr;
             if (order < 4)
             {
-                ifclr = &_dma.reg.LIFCR;
-                ifsr = &_dma.reg.LISR;
+                ifclr = &dma.reg.LIFCR;
+                ifsr = &dma.reg.LISR;
             }
             else
             {
-                ifclr = &_dma.reg.HIFCR;
-                ifsr = &_dma.reg.HISR;
+                ifclr = &dma.reg.HIFCR;
+                ifsr = &dma.reg.HISR;
             }
 
             on_complete_handler(ifclr, ifsr);

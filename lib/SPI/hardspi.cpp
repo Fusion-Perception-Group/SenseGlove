@@ -357,7 +357,7 @@ void HardwareInterface::disable_on_error_interrupt() const noexcept
 
 void HardwareInterface::on_send_handler() const noexcept
 try{
-    if (reg.SR & SPI_SR_TXE)
+    if (reg.SR & SPI_SR_TXE and reg.CR2 & SPI_CR2_TXEIE)
     {
         if (on_send_ready)
             on_send_ready();
@@ -366,7 +366,7 @@ try{
 catch(...) {}
 void HardwareInterface::on_recv_handler() const noexcept
 try{
-    if (reg.SR & SPI_SR_RXNE)
+    if (reg.SR & SPI_SR_RXNE and reg.CR2 & SPI_CR2_RXNEIE)
     {
         if (on_recv_ready)
             on_recv_ready();
@@ -375,7 +375,8 @@ try{
 catch(...) {}
 void HardwareInterface::on_error_handler() const noexcept
 try{
-    if (reg.SR & (SPI_SR_CRCERR | SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR | SPI_SR_FRE))
+    if (reg.CR2 & SPI_CR2_ERRIE and
+        reg.SR & (SPI_SR_CRCERR | SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR | SPI_SR_FRE))
     {
         if (on_error)
             on_error();
@@ -441,29 +442,6 @@ extern "C"
         Spi6.global_interrupt_handler();
     }
     #endif
-}
-
-uint32_t test()
-{
-    SPI_HandleTypeDef hspi{
-        .Instance = SPI1,
-        .Init{
-            .Direction = SPI_DIRECTION_2LINES,
-            .CLKPolarity = SPI_POLARITY_LOW,
-            .CLKPhase = SPI_PHASE_1EDGE,
-            .NSS = SPI_NSS_SOFT,
-            .BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2,
-            .FirstBit = SPI_FIRSTBIT_MSB,
-            .TIMode = SPI_TIMODE_DISABLE,
-            .CRCCalculation = SPI_CRCCALCULATION_DISABLE,
-        }
-    };
-    HAL_SPI_Init(&hspi);
-
-    [[maybe_unused]]uint8_t tx[10], rx[10];
-    tx[0] = 0x9f;
-    HAL_SPI_TransmitReceive(&hspi, tx, rx, 1, 1000);
-    return rx[0];
 }
 
 }

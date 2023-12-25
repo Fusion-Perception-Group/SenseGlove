@@ -139,7 +139,6 @@ extern HardwareInterface Spi3;
 extern HardwareInterface Spi4;
 extern HardwareInterface Spi5;
 extern HardwareInterface Spi6;
-uint32_t test();
 
 }
 }
