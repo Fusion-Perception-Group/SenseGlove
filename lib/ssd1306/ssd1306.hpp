@@ -13,7 +13,7 @@ namespace ssd1306
         SSD1306Exception(const char *msg): std::runtime_error(msg) {}
     };
     
-    static constexpr uint8_t PAGES = 8, COLS = 128, PAGE_HEIGHT = 8;
+    inline constexpr uint8_t PAGES = 8, COLS = 128, PAGE_HEIGHT = 8;
 
     class BaseDisplay
     {

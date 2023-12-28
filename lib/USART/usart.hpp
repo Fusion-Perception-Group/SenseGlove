@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <stdexcept>
 #include <functional>
 #include <type_traits>
@@ -20,6 +21,7 @@ namespace stm32
 namespace usart
 {
 using CallbackType = std::function<void()>;
+using std::size_t;
 namespace detail
 {
     struct Register
@@ -125,9 +127,13 @@ public:
     {
         return exchange_bytes(data, size, nullptr, 0);
     }
-    size_t write(std::string_view sv)
+    size_t write(const std::string_view sv)
     {
         return write_bytes(sv.data(), sv.size());
+    }
+    size_t write(const char *str)
+    {
+        return write_bytes(str, std::strlen(str));
     }
     size_t read_bytes(void *data, size_t size)
     {
@@ -150,6 +156,18 @@ public:
     {
         read_bytes(&data, sizeof(T));
         return data;
+    }
+    template <typename T>
+    T replace(const T &send) requires(std::is_trivially_copyable_v<T>)
+    {
+        T new_data;
+        exchange_bytes(&send, sizeof(T), &new_data, sizeof(T));
+        return new_data;
+    }
+    template <typename T>
+    void replace(const T &send, T &recv) requires(std::is_trivially_copyable_v<T>)
+    {
+        exchange_bytes(&send, sizeof(T), &recv, sizeof(T));
     }
     template <std::input_iterator Iter_t, std::sentinel_for<Iter_t> Senti_t>
     size_t write(Iter_t begin, Senti_t end)
@@ -190,7 +208,21 @@ public:
     {
         return read(std::ranges::begin(range), std::ranges::end(range));
     }
-
+    template <typename Iter_t, typename Senti_t>
+    requires std::sentinel_for<Senti_t, Iter_t> &&
+             std::output_iterator<Iter_t, typename std::iterator_traits<Iter_t>::value_type>
+    size_t exchange(Iter_t begin, Senti_t end) const
+    {
+        size_t count=0;
+        size_t unit_bytes = sizeof(typename std::iterator_traits<Iter_t>::value_type);
+        while (begin != end)
+        {
+            *begin = replace<typename std::iterator_traits<Iter_t>::value_type>(*begin);
+            ++begin;
+            count += unit_bytes;
+        }
+        return count;
+    }
 };
 
 class HardUart : public BaseUart

@@ -40,6 +40,7 @@ int main()
     {
         auto sensor = wit::I2CSensor(i2c);
         sensor.set_report_rate(wit::ReportRate::None);
+        sensor.set_led(true);
 
         render.format_at(0, 0, "Test started");
 

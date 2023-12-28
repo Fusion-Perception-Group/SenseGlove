@@ -68,42 +68,6 @@ namespace detail
     extern Register &TIM15_Reg;
     extern Register &TIM16_Reg;
     extern Register &TIM17_Reg;
-
-    inline constexpr uint16_t int_sqrt32(uint32_t x)
-    {
-        uint16_t res=0;
-        uint16_t add= 0x8000;   
-        int i;
-        for(i=0;i<16;i++)
-        {
-            uint16_t temp=res | add;
-            uint32_t g2=temp*temp;      
-            if (x>=g2)
-            {
-                res=temp;           
-            }
-            add>>=1;
-        }
-        return res;
-    }
-
-    inline constexpr uint32_t int_sqrt64(uint64_t x)
-    {
-        uint32_t res=0;
-        uint32_t add= 0x80000000;   
-        int i;
-        for(i=0;i<32;i++)
-        {
-            uint32_t temp=res | add;
-            uint64_t g2=temp*temp;      
-            if (x>=g2)
-            {
-                res=temp;           
-            }
-            add>>=1;
-        }
-        return res;
-    }
 }
 
 enum class ClockSource : uint32_t

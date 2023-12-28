@@ -37,7 +37,7 @@ int main()
     auto &tim = clock::Tim1;
     tim.init();
     tim.set_repetition(100);
-    tim.set_frequency(100);
+    tim.set_frequency(1000);
     tim.on_reload = [&led, &tim]()
     {
         if (led.read())
@@ -48,7 +48,7 @@ int main()
         else
         {
             led.set();
-            tim.set_repetition(100);
+            tim.set_repetition(50);
         }
     };
     tim.enable_interrupt_reload();

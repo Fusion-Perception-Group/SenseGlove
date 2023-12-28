@@ -22,9 +22,9 @@ int main()
         7  // USART1 Alternate Function
     );
     gpio::Pin tx(gpio::PortA, 9, usart_cfg), rx(gpio::PortA, 10, usart_cfg);
-    auto &usart = usart::Usart1;
-    usart.init();
-    usart.write("Start!\n");
+    // auto &usart = usart::Usart1;
+    // usart.init();
+    // usart.write("Start!\n");
 
     try
     {
@@ -51,14 +51,14 @@ int main()
         pwm_tim.channel4.set_pwm(pwm_freq, duty_ratio, false);
 
         pwm_tim.start();
-        usart.write("PWM started\n");
+        // usart.write("PWM started\n");
         clock::delay(100ms);  // screen needs wait for some time before init
         auto i2c = i2c::SoftMaster(gpio::Pin(gpio::PortB, 7), gpio::Pin(gpio::PortB, 6));
         auto screen = ssd1306::I2CDisplay(i2c);
         screen.clear();
-        usart.write("Screen cleared\n");
+        // usart.write("Screen cleared\n");
         auto render = ssd1306::TexRender(screen);
-        usart.write("Render created\n");
+        // usart.write("Render created\n");
 
 
         while (true)
@@ -71,16 +71,16 @@ int main()
     }
     catch (const std::exception &e)
     {
-        usart.write(ffmt::format("Exception: {}\n", e.what()));
+        // usart.write(ffmt::format("Exception: {}\n", e.what()));
     }
     catch (...)
     {
-        usart.write("Unknown exception\n");
+        // usart.write("Unknown exception\n");
     }
 
     while (true)
     {
-        usart.write("End Looping\n");
+        // usart.write("End Looping\n");
         clock::delay(10s);
     }
 

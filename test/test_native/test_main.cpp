@@ -50,7 +50,6 @@ void test_ffmt()
     using namespace vermils::ffmt;
     int a = 123;
     double d = 123.321;
-    
     TEST_ASSERT_EQUAL_STRING("{}", format("{{}").data());
 
     TEST_ASSERT_EQUAL_STRING("a = +00123",  format("a = {:+06}", a).data());

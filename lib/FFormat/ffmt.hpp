@@ -1,4 +1,7 @@
-#pragma once
+// #pragma once
+
+#ifndef _VERMILS_FFORMAT_HPP
+#define _VERMILS_FFORMAT_HPP
 
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uint_fast16_t
@@ -836,7 +839,8 @@ namespace vermils
 
         template <typename T>
         inline constexpr string stringify(T &&arg, const Placeholder &p)
-            requires(!std::floating_point<T> && !std::integral<T> && std::convertible_to<T, string>)
+            requires(!std::floating_point<std::remove_cv_t<std::remove_reference_t<T>>> &&
+                     !std::integral<std::remove_cv_t<std::remove_reference_t<T>>>)
         {
             std::string s(std::forward<T>(arg));
             return pad_str(s, p);
@@ -1242,3 +1246,5 @@ namespace vermils
 
     }
 }
+
+#endif

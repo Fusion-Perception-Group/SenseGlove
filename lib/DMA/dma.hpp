@@ -15,7 +15,7 @@ namespace stm32
 {
 namespace dma
 {
-using CallbackType = std::function<void()>;
+using CallbackType = std::function<void(bool full_complete)>;
 
 namespace detail
 {
@@ -137,6 +137,7 @@ public:
     FIFOError(const char *msg = "FIFO Error") : DMAError(msg) {}
 };
 
+using ErrCallBackType = std::function<void(const DMAError&)>;
 
 /**
  * @brief Get the addr type regarding to the address and STM32 mem-map convention
@@ -173,22 +174,6 @@ public:
         {
             constexpr _Property(Stream & stream) : tricks::StaticProperty<T, Stream &>(stream) {}
             using tricks::StaticProperty<T, Stream &>::operator=;
-        };
-        struct _Enabled : public _Property<bool>
-        {
-            constexpr _Enabled(Stream & stream) : _Property<bool>(stream) {}
-            using _Property<bool>::operator=;
-            bool getter() const override
-            {
-                return static_cast<uint16_t>(this->owner.reg.CR & 1U);
-            }
-            void setter(bool on) const override
-            {
-                if (on)
-                    owner.enable();
-                else
-                    owner.disable();
-            }
         };
         struct _Count : public _Property<uint16_t>
         {
@@ -320,16 +305,16 @@ public:
         const uint8_t order;
         detail::_DMAStreamReg & reg;
         const nvic::IRQn_Type irqn;
-        mutable CallbackType on_complete;
-        mutable CallbackType on_half_complete;
-        mutable CallbackType on_direct_mode_error;
-        mutable CallbackType on_transfer_error;
-        mutable CallbackType on_fifo_error;
+        mutable CallbackType on_complete; // accept `bool` as argument, true for full complete, false for half complete
+        // mutable CallbackType on_half_complete;
+        mutable ErrCallBackType on_error; // accept `const DMAError&` as argument
+        // mutable CallbackType on_direct_mode_error;
+        // mutable CallbackType on_transfer_error;
+        // mutable CallbackType on_fifo_error;
         _DestAddr dst_addr{*this}; // destination address
         _SauceAddr src_addr{*this}; // source address
         void * volatile & dbuf_addr = reg.M1AR; // double buffer destination address in ram (only used in double buffer mode)
-        _Enabled enabled{*this};
-        _Enabled &busy = enabled;
+
         _Count count{*this};
 
         Stream(BaseDMA & dma, uint8_t order, detail::_DMAStreamReg & reg, nvic::IRQn_Type irqn) : dma(dma), order(order), reg(reg), irqn(irqn) {}
@@ -353,6 +338,16 @@ public:
         void disable() const noexcept
         {
             reg.CR &= ~1U;
+        }
+
+        bool is_enabled() const noexcept
+        {
+            return reg.CR & 1U;
+        }
+
+        bool is_busy() const noexcept
+        {
+            return reg.CR & 1U;
         }
 
         void select_channel(uint8_t channel) const
@@ -624,8 +619,10 @@ public:
             if (reg.FCR & (1 << 7) && *ifsr & mask)
             {
                 *ifclr = mask;
-                if (on_fifo_error)
-                    on_fifo_error();
+                // if (on_fifo_error)
+                //     on_fifo_error();
+                if (on_error)
+                    on_error(FIFOError());
             }
         }
         catch(...) {}
@@ -635,8 +632,10 @@ public:
             if (reg.CR & (1 << 1) && *ifsr & mask)
             {
                 *ifclr = mask;
-                if (on_direct_mode_error)
-                    on_direct_mode_error();
+                // if (on_direct_mode_error)
+                //     on_direct_mode_error();
+                if (on_error)
+                    on_error(DirectModeError());
             }
         }
         catch(...) {}
@@ -646,8 +645,10 @@ public:
             if (reg.CR & (1 << 2) && *ifsr & mask)
             {
                 *ifclr = mask;
-                if (on_transfer_error)
-                    on_transfer_error();
+                // if (on_transfer_error)
+                //     on_transfer_error();
+                if (on_error)
+                    on_error(TransferError());
             }
         }
         catch(...) {}
@@ -657,8 +658,10 @@ public:
             if (reg.CR & (1 << 3) && *ifsr & mask)
             {
                 *ifclr = mask;
-                if (on_half_complete)
-                    on_half_complete();
+                // if (on_half_complete)
+                //     on_half_complete();
+                if (on_complete)
+                    on_complete(false);
             }
         }
         catch(...) {}
@@ -669,7 +672,7 @@ public:
             {
                 *ifclr |= mask;
                 if (on_complete)
-                    on_complete();
+                    on_complete(true);
             }
         }
         catch(...) {}

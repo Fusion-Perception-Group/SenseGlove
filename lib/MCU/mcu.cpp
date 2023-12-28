@@ -1,4 +1,4 @@
-#include "mcu.hpp"
+#include "mcu_basic.hpp"
 #include "_config.hpp"
 
 #define weak __attribute__((weak))

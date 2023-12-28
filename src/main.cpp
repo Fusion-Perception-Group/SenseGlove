@@ -7,6 +7,8 @@
 #include "texrender.hpp"
 #include "w25qxx.hpp"
 #include "wit.hpp"
+#include "glaze/glaze.hpp"
+#include "directy.hpp"
 
 using namespace vermils;
 using namespace stm32;
@@ -25,15 +27,21 @@ int main()
     );
     gpio::Pin tx(gpio::PortA, 9, usart_cfg), rx(gpio::PortA, 10, usart_cfg);
     auto &usart = usart::Usart1;
-    usart.init();
-    usart.write("Start!\n");
+    // usart.init();
+    // usart.write("Start!\n");
 
+    clock::delay(100ms);  // screen needs wait for some time before init
+    auto i2c = i2c::SoftMaster(gpio::Pin(gpio::PortB, 7), gpio::Pin(gpio::PortB, 6));
+    auto screen = ssd1306::I2CDisplay(i2c);
+    screen.clear();
+    auto render = ssd1306::TexRender(screen);
+    
     try
     {
         // ############################ Setup ############################
         gpio::PinConfig pwm_config(
             gpio::PinConfig::AF,
-            gpio::PinConfig::VeryHigh,
+            gpio::PinConfig::High,
             gpio::PinConfig::PushPull,
             2  // TIM3 Alternate Function
         );
@@ -54,12 +62,6 @@ int main()
         pwm_tim.channel4.set_pwm(pwm_freq, duty_ratio, false);
 
         pwm_tim.start();
-        usart.write("PWM started\n");
-        clock::delay(100ms);  // screen needs wait for some time before init
-        auto i2c = i2c::SoftMaster(gpio::Pin(gpio::PortB, 7), gpio::Pin(gpio::PortB, 6));
-        auto screen = ssd1306::I2CDisplay(i2c);
-        screen.clear();
-        auto render = ssd1306::TexRender(screen);
 
         auto adc_config = gpio::PinConfig(gpio::PinConfig::Analog, gpio::PinConfig::NoPull);
         gpio::Pin adc1_pin(gpio::PortA, 1, adc_config);
@@ -105,11 +107,13 @@ int main()
         while (true)
         {
             render.format_at(0, 0, "counter {:06}", pwm_tim.counter);
+            render.format_at(2, 0, "ADC: {:04} {:04} {:04} {:04}", flex_buffer[0], flex_buffer[1], flex_buffer[2], flex_buffer[3]);
             clock::delay(50ms);
         }
     }
     catch (const std::exception &e)
     {
+        render.format_at(0, 0, "Exception: {}\n", e.what());
         usart.write(ffmt::format("Exception: {}\n", e.what()));
     }
     catch (...)
