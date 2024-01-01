@@ -14,13 +14,13 @@
         #error "Custom firmware lib not found"
         #endif
 
-    #elif defined(__VERMIL_STM32F1)
+    #elif defined(_VERMIL_STM32F1)
     #include "stm32f1xx_hal.h"
 
-    #elif defined(__VERMIL_STM32F4)
+    #elif defined(_VERMIL_STM32F4)
     #include "stm32f4xx_hal.h"
 
-    #elif defined(__VERMIL_STM32H7)
+    #elif defined(_VERMIL_STM32H7)
     #include "stm32h7xx_hal.h"
 
     #else

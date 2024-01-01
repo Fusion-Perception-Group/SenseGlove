@@ -1,7 +1,7 @@
 #include "_config.hpp"
 #include "rcc.hpp"
 
-#if defined(__VERMIL_STM32F1) && !__VERMIL_STM32_USE_GENERIC
+#if defined(_VERMIL_STM32F1) && !_VERMIL_STM32_USE_GENERIC
 
 namespace vermils
 {

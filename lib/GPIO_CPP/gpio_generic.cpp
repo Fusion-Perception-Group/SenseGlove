@@ -23,7 +23,7 @@ void Pin::CLSN::setter(const TYPE value) const\
     owner.load(owner._config);\
 }
 
-#if !VERMIL_STM32_USE_CMSIS && __VERMIL_STM32_USE_GENERIC
+#if !VERMIL_STM32_USE_CMSIS && _VERMIL_STM32_USE_GENERIC
 namespace vermils
 {
 namespace stm32
@@ -434,4 +434,4 @@ void Pin::unload() const
 } // namespace stm32
 } // namespace vermils
 
-#endif // !VERMIL_STM32_USE_CMSIS && __VERMIL_STM32_USE_GENERIC
+#endif // !VERMIL_STM32_USE_CMSIS && _VERMIL_STM32_USE_GENERIC

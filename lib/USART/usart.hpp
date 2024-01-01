@@ -26,7 +26,7 @@ namespace detail
 {
     struct Register
     {
-        #if defined(__VERMIL_STM32FX)
+        #if defined(_VERMIL_STM32FX)
         volatile uint32_t SR;         /*!< USART Status register,                   Address offset: 0x00 */
         volatile uint32_t DR;         /*!< USART Data register,                     Address offset: 0x04 */
         volatile uint32_t BRR;        /*!< USART Baud rate register,                Address offset: 0x08 */
@@ -34,7 +34,7 @@ namespace detail
         volatile uint32_t CR2;        /*!< USART Control register 2,                Address offset: 0x10 */
         volatile uint32_t CR3;        /*!< USART Control register 3,                Address offset: 0x14 */
         volatile uint32_t GTPR;       /*!< USART Guard time and prescaler register, Address offset: 0x18 */
-        #elif defined(__VERMIL_STM32HX)
+        #elif defined(_VERMIL_STM32HX)
         volatile uint32_t CR1;    /*!< USART Control register 1,                 Address offset: 0x00 */
         volatile uint32_t CR2;    /*!< USART Control register 2,                 Address offset: 0x04 */
         volatile uint32_t CR3;    /*!< USART Control register 3,                 Address offset: 0x08 */

@@ -16,7 +16,7 @@ namespace spi
         {
             volatile uint32_t CR1;        /*!< SPI control register 1 (not used in I2S mode),      Address offset: 0x00 */
             volatile uint32_t CR2;        /*!< SPI control register 2,                             Address offset: 0x04 */
-            #ifdef __VERMIL_STM32FX
+            #ifdef _VERMIL_STM32FX
             volatile uint32_t SR;         /*!< SPI status register,                                Address offset: 0x08 */
             volatile uint32_t DR;         /*!< SPI data register,                                  Address offset: 0x0C */
             volatile uint32_t CRCPR;      /*!< SPI CRC polynomial register (not used in I2S mode), Address offset: 0x10 */
@@ -24,7 +24,7 @@ namespace spi
             volatile uint32_t TXCRCR;     /*!< SPI TX CRC register (not used in I2S mode),         Address offset: 0x18 */
             volatile uint32_t I2SCFGR;    /*!< SPI_I2S configuration register,                     Address offset: 0x1C */
             volatile uint32_t I2SPR;      /*!< SPI_I2S prescaler register,                         Address offset: 0x20 */
-            #elif defined(__VERMIL_STM32HX)
+            #elif defined(_VERMIL_STM32HX)
             volatile uint32_t CFG1;          /*!< SPI Configuration register 1,                    Address offset: 0x08 */
             volatile uint32_t CFG2;          /*!< SPI Configuration register 2,                    Address offset: 0x0C */
             volatile uint32_t IER;           /*!< SPI/I2S Interrupt Enable register,               Address offset: 0x10 */

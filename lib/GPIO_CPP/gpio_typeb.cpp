@@ -13,15 +13,15 @@
 #include "_config.hpp"
 #include "gpio.hpp"
 
-#if (defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32H7)) && !__VERMIL_STM32_USE_GENERIC && !VERMIL_STM32_USE_CMSIS
+#if (defined(_VERMIL_STM32F4) || defined(_VERMIL_STM32H7)) && !_VERMIL_STM32_USE_GENERIC && !VERMIL_STM32_USE_CMSIS
 
-#if defined(__VERMIL_STM32F4)
+#if defined(_VERMIL_STM32F4)
 #define EXTI_IMR (EXTI->IMR)
 #define EXTI_EMR (EXTI->EMR)
 #define EXTI_RTSR (EXTI->RTSR)
 #define EXTI_FTSR (EXTI->FTSR)
 
-#elif defined(__VERMIL_STM32H7)
+#elif defined(_VERMIL_STM32H7)
 
 #if defined(DUAL_CORE) && defined(CORE_CM4)
   EXTI_CurrentCPU = EXTI_D2; /* EXTI for CM4 CPU */
@@ -538,4 +538,4 @@ void Pin::unload() const
 } // namespace stm32
 } // namespace vermils
 
-#endif // defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32H7)
+#endif // defined(_VERMIL_STM32F4) || defined(_VERMIL_STM32H7)

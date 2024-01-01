@@ -30,7 +30,7 @@ inline constexpr uint8_t GPIO_PINS_N = 16;
 class Pin;
 namespace hidden
 {
-    #if __VERMIL_STM32_USE_GENERIC
+    #if _VERMIL_STM32_USE_GENERIC
     extern volatile uint32_t & BSRR;
     #endif
     /**
@@ -40,14 +40,14 @@ namespace hidden
     class _Port final
     {
     public:
-        #if __VERMIL_STM32_USE_GENERIC
+        #if _VERMIL_STM32_USE_GENERIC
             volatile uint32_t & BSRR;
             volatile uint32_t & IDR;
             volatile uint32_t & ODR;
             _Port(volatile uint32_t & BSRR, volatile uint32_t & IDR, volatile uint32_t & ODR):
             BSRR(BSRR), IDR(BSRR), ODR(BSRR) {}
         #else
-            #if defined(__VERMIL_STM32F1)
+            #if defined(_VERMIL_STM32F1)
             volatile uint32_t CRL;      /*!< GPIO port configuration register low,  Address offset: 0x00      */
             volatile uint32_t CRH;      /*!< GPIO port configuration register high, Address offset: 0x04      */
             volatile uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x08      */
@@ -55,7 +55,7 @@ namespace hidden
             volatile uint32_t BSRR;     /*!< GPIO port bit set/reset register,      Address offset: 0x10      */
             volatile uint32_t BRR;      /*!< GPIO port bit reset register,          Address offset: 0x14      */
             volatile uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x18      */
-            #elif defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32H7)
+            #elif defined(_VERMIL_STM32F4) || defined(_VERMIL_STM32H7)
             volatile uint32_t MODER;    /*!< GPIO port mode register,               Address offset: 0x00      */
             volatile uint32_t OTYPER;   /*!< GPIO port output type register,        Address offset: 0x04      */
             volatile uint32_t OSPEEDR;  /*!< GPIO port output speed register,       Address offset: 0x08      */
@@ -107,7 +107,7 @@ hidden::_Port & get_port_by_index(const int index);
 
 namespace ports
 {
-    #if __VERMIL_STM32_USE_GENERIC
+    #if _VERMIL_STM32_USE_GENERIC
         #define __Port_Type hidden::_Port
     #else
         #define __Port_Type hidden::_Port &
@@ -207,7 +207,7 @@ class Pin
 {
     uint8_t _pin;
     uint32_t _mask;
-    #if __VERMIL_STM32_USE_GENERIC
+    #if _VERMIL_STM32_USE_GENERIC
     mutable PinConfig _config;
     #endif
     template <typename T>

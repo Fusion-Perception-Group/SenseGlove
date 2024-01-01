@@ -87,7 +87,7 @@ namespace hidden
 } // namespace hidden
 void Pin::trigger_interrupt() const noexcept
 {
-    #ifdef __VERMIL_STM32HX
+    #ifdef _VERMIL_STM32HX
     EXTI->SWIER1 |= mask;
     #else
     EXTI->SWIER |= mask;

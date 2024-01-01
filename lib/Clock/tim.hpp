@@ -41,7 +41,7 @@ namespace detail
         volatile uint32_t DCR;   /*!< TIM DMA control register,                 Address offset: 0x48 */
         volatile uint32_t DMAR;  /*!< TIM DMA address for full transfer,        Address offset: 0x4C */
         volatile uint32_t OR;    /*!< TIM option register,                      Address offset: 0x50 */
-    #if defined(__VERMIL_STM32HX)
+    #if defined(_VERMIL_STM32HX)
         volatile uint32_t CCMR3; /*!< TIM capture/compare mode register 3,      Address offset: 0x54 */
         volatile uint32_t CCR5;  /*!< TIM capture/compare register5,            Address offset: 0x58 */
         volatile uint32_t CCR6;  /*!< TIM capture/compare register6,            Address offset: 0x5C */

@@ -2,7 +2,7 @@
 #include "_config.hpp"
 #include <cmath>
 
-#if defined(__VERMIL_STM32FX) && !__VERMIL_STM32_USE_GENERIC
+#if defined(_VERMIL_STM32FX) && !_VERMIL_STM32_USE_GENERIC
 
 namespace vermils
 {

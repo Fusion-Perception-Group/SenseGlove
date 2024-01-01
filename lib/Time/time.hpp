@@ -108,7 +108,7 @@ namespace time
         }
     };
 
-    #if defined(__VERMIL_STM32HX)
+    #if defined(_VERMIL_STM32HX)
     // not implemented
     #else
     using HighResTimer = DWTTimer;

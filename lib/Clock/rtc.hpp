@@ -19,7 +19,7 @@ using power::set_backup_protection;
     {
         struct Register
         {
-            #if defined(__VERMIL_STM32F4)
+            #if defined(_VERMIL_STM32F4)
             volatile uint32_t TR;      /*!< RTC time register,                                        Address offset: 0x00 */
             volatile uint32_t DR;      /*!< RTC date register,                                        Address offset: 0x04 */
             volatile uint32_t CR;      /*!< RTC control register,                                     Address offset: 0x08 */
@@ -60,7 +60,7 @@ using power::set_backup_protection;
             volatile uint32_t BKP17R;  /*!< RTC backup register 17,                                   Address offset: 0x94 */
             volatile uint32_t BKP18R;  /*!< RTC backup register 18,                                   Address offset: 0x98 */
             volatile uint32_t BKP19R;  /*!< RTC backup register 19,                                   Address offset: 0x9C */
-            #elif defined(__VERMIL_STM32F1)
+            #elif defined(_VERMIL_STM32F1)
             volatile uint32_t CRH;
             volatile uint32_t CRL;
             volatile uint32_t PRLH;
@@ -71,7 +71,7 @@ using power::set_backup_protection;
             volatile uint32_t CNTL;
             volatile uint32_t ALRH;
             volatile uint32_t ALRL;
-            #elif defined(__VERMIL_STM32H7)
+            #elif defined(_VERMIL_STM32H7)
             volatile uint32_t TR;         /*!< RTC time register,                                         Address offset: 0x00 */
             volatile uint32_t DR;         /*!< RTC date register,                                         Address offset: 0x04 */
             volatile uint32_t CR;         /*!< RTC control register,                                      Address offset: 0x08 */
@@ -149,7 +149,7 @@ inline void deinit() noexcept
 
 inline void unlock() noexcept
 {
-    #if defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32HX)
+    #if defined(_VERMIL_STM32F4) || defined(_VERMIL_STM32HX)
     detail::reg.WPR = 0xCA;
     detail::reg.WPR = 0x53;
     #endif
@@ -157,7 +157,7 @@ inline void unlock() noexcept
 
 inline void lock() noexcept
 {
-    #if defined(__VERMIL_STM32F4) || defined(__VERMIL_STM32HX)
+    #if defined(_VERMIL_STM32F4) || defined(_VERMIL_STM32HX)
     detail::reg.WPR = 0xFF;
     #endif
 }

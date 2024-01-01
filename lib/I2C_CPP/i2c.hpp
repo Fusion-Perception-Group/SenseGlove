@@ -87,14 +87,14 @@ namespace i2c
             volatile uint32_t CR2;        /*!< I2C Control register 2,     Address offset: 0x04 */
             volatile uint32_t OAR1;       /*!< I2C Own address register 1, Address offset: 0x08 */
             volatile uint32_t OAR2;       /*!< I2C Own address register 2, Address offset: 0x0C */
-            #if defined(__VERMIL_STM32FX)
+            #if defined(_VERMIL_STM32FX)
             volatile uint32_t DR;         /*!< I2C Data register,          Address offset: 0x10 */
             volatile uint32_t SR1;        /*!< I2C Status register 1,      Address offset: 0x14 */
             volatile uint32_t SR2;        /*!< I2C Status register 2,      Address offset: 0x18 */
             volatile uint32_t CCR;        /*!< I2C Clock control register, Address offset: 0x1C */
             volatile uint32_t TRISE;      /*!< I2C TRISE register,         Address offset: 0x20 */
             volatile uint32_t FLTR;       /*!< I2C FLTR register,          Address offset: 0x24 */
-            #elif defined(__VERMIL_STM32HX)
+            #elif defined(_VERMIL_STM32HX)
             volatile uint32_t TIMINGR;  /*!< I2C Timing register,               Address offset: 0x10 */
             volatile uint32_t TIMEOUTR; /*!< I2C Timeout register,              Address offset: 0x14 */
             volatile uint32_t ISR;      /*!< I2C Interrupt and status register, Address offset: 0x18 */

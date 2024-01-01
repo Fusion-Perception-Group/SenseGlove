@@ -22,7 +22,7 @@ namespace detail
     {
         volatile uint32_t CR;   /*!< PWR power control register,        Address offset: 0x00 */
         volatile uint32_t CSR;  /*!< PWR power control/status register, Address offset: 0x04 */
-        #ifdef __VERMIL_STM32HX
+        #ifdef _VERMIL_STM32HX
         volatile  uint32_t CR2;       /*!< PWR power control register 2,            Address offset: 0x08 */
         volatile  uint32_t CR3;       /*!< PWR power control register 3,            Address offset: 0x0C */
         volatile  uint32_t CPUCR;     /*!< PWR CPU control register,                Address offset: 0x10 */

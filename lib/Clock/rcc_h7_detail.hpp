@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "userconfig.hpp"
 
-#if defined(__VERMIL_STM32H7) && !__VERMIL_STM32_USE_GENERIC
+#if defined(_VERMIL_STM32H7) && !_VERMIL_STM32_USE_GENERIC
 
 namespace vermils
 {

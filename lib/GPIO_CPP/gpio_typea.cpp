@@ -13,7 +13,7 @@
 #include "_config.hpp"
 #include "gpio.hpp"
 
-#if defined(__VERMIL_STM32F1) && !__VERMIL_STM32_USE_GENERIC && !VERMIL_STM32_USE_CMSIS
+#if defined(_VERMIL_STM32F1) && !_VERMIL_STM32_USE_GENERIC && !VERMIL_STM32_USE_CMSIS
 
 namespace vermils
 {
@@ -537,4 +537,4 @@ void Pin::unload() const
 } // namespace stm32
 } // namespace vermils
 
-#endif // !VERMIL_STM32_USE_CMSIS && __VERMIL_STM32_USE_GENERIC
+#endif // !VERMIL_STM32_USE_CMSIS && _VERMIL_STM32_USE_GENERIC
