@@ -22,11 +22,9 @@ int main()
     using namespace gpio::ports;
 
     mcu::init();
-    Pin snap(PortB, 9, PinConfig(PinConfig::Input, PinConfig::PullUp)),
-        cap_sensor(PortA, 0, PinConfig(PinConfig::Input, PinConfig::PullDown));
-    PinConfig out_cfg = PinConfig(PinConfig::Output, PinConfig::VeryHigh, PinConfig::PushPull);
-    Pin motor_pin0(PortB, 0, out_cfg), motor_pin1(PortB, 1, out_cfg);
-    Pin led(LED_GPIO_PORT, LED_PIN, out_cfg);
+    gpio::Button pinch(PortB, 9, true), cap_sensor(PortA, 0);
+    gpio::Switch motor_pin0(PortB, 0), motor_pin1(PortB, 1);
+    gpio::Switch led(LED_GPIO_PORT, LED_PIN, true);
 
     // if (cap_sensor.read())
     // {
@@ -39,18 +37,39 @@ int main()
     // {
     //     led.set();
     // }
-    motor_pin1.reset();
-    led.set();
+    motor_pin1.off();
+    motor_pin0.off();
+    led.off();
 
     while (true)
     {
-        if (cap_sensor.read())
+        if (cap_sensor.pressed())
         {
-            led.reset();
+            led.on();
         }
         else
         {
-            led.set();
+            led.off();
+        }
+        if (pinch.pressed())
+        {
+            motor_pin0.on();
+            motor_pin1.off();
+            clock::delay(5ms);
+            // motor_pin0.off();
+            // while (pinch.pressed())
+            // {
+            // }
+        }
+        else
+        {
+        //     motor_pin1.on();
+            motor_pin0.off();
+            clock::delay(5ms);
+            // motor_pin1.off();
+            // while (!pinch.pressed())
+            // {
+            // }
         }
         // if (!snap.read())
         // {

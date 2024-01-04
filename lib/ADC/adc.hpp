@@ -278,7 +278,7 @@ public:
     void config_dma(
         const dma::BaseDMA::Stream &stream,
         const uint8_t channel,
-        void * const dst_addr,
+        volatile void * const dst_addr,
         const dma::UnitSize dst_unit_size,
         const bool dst_inc,
         const dma::Priority priority = dma::Priority::High,
@@ -309,7 +309,7 @@ public:
     }
 
     void config_dma(
-        void * const dst_addr,
+        volatile void * const dst_addr,
         const dma::UnitSize dst_unit_size,
         const bool dst_inc,
         const dma::Priority priority = dma::Priority::High,

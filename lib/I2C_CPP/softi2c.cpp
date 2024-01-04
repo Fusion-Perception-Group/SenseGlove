@@ -15,10 +15,11 @@ namespace i2c
     {
         sda.port.enable_clock();
         scl.port.enable_clock();
-        sda.io = gpio::PinConfig::IO::Output;
-        scl.io = gpio::PinConfig::IO::Output;
-        sda.out_mode = gpio::PinConfig::OutMode::OpenDrain;
-        scl.out_mode = gpio::PinConfig::OutMode::OpenDrain;
+        gpio::PinConfig cfg(
+            gpio::PinConfig::Output, gpio::PinConfig::VeryHigh, gpio::PinConfig::OpenDrain);
+        cfg.pull = gpio::PinConfig::PullUp;
+        sda.load(cfg);
+        scl.load(cfg);
         end();  // Avoid triggering a start condition and release SDA/SCL
     }
 

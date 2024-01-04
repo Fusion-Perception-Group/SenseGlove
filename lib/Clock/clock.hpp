@@ -37,8 +37,7 @@ namespace clock
         StampGetterType _stamp_getter;
 
     public:
-        const T target;
-
+        T target;
         TimeoutChecker(StampGetterType stamp_getter, T stamp) noexcept
             : _stamp_getter(stamp_getter), target(stamp) {}
 
@@ -46,6 +45,19 @@ namespace clock
         requires Timestamp<decltype(std::declval<C>().get_timestamp())>
         TimeoutChecker(C &clock, T stamp) noexcept
             : _stamp_getter([&clock]() -> T { return clock.get_timestamp(); }), target(stamp) {}
+
+        TimeoutChecker<T> &operator=(const TimeoutChecker<T> &other) noexcept
+        {
+            _stamp_getter = other._stamp_getter;
+            target = other.target;
+            return *this;
+        }
+        TimeoutChecker<T> &operator=(TimeoutChecker<T> &&other) noexcept
+        {
+            _stamp_getter = std::move(other._stamp_getter);
+            target = std::move(other.target);
+            return *this;
+        }
 
         virtual ~TimeoutChecker() = default;
 

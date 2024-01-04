@@ -55,25 +55,26 @@ int main()
         // canvas.uni_draw_line(0, 0, 127, 0);
         // canvas.uni_draw_line(0, 0, 0, 63);
         // canvas.uni_draw_line(127, 40, 127, 40);
-        // canvas.uni_draw_line(15, 16, 15, 37, directy::PX_MAX, directy::LineType::Infinite);
-        // canvas.uni_draw_line(15, 16, 20, 37, directy::PX_MAX, directy::LineType::Infinite);
-        // canvas.uni_draw_line(15, 16, 20, 0, directy::PX_MAX, directy::LineType::Infinite);
-        // canvas.uni_draw_line(11, 32, 20, 32, directy::PX_MAX, directy::LineType::Infinite);
+        // canvas.uni_draw_line(15, 16, 15, 37, directy::PX_MAX,directy::PX_MAX, directy::LineType::Infinite);
+        // canvas.uni_draw_line(15, 16, 20, 37, directy::PX_MAX,directy::PX_MAX, directy::LineType::Infinite);
+        // canvas.uni_draw_line(15, 16, 20, 0, directy::PX_MAX,directy::PX_MAX, directy::LineType::Infinite);
+        // canvas.uni_draw_line(11, 32, 20, 32, directy::PX_MAX,directy::PX_MAX, directy::LineType::Infinite);
         // canvas.uni_draw_rect(0, 0, 127, 63);
         // canvas.uni_draw_filled_rect(16, 16, 32, 32);
         // canvas.uni_draw_circle(64, 32, 16);
-        canvas.create_child<directy::LineNode>(0, 0, 127, 63);
+        // canvas.create_child<directy::LineNode>(0, 0, 127, 63);
+        canvas.create_child<directy::TextBoxNode>("Hello, World! 12345678901234567890");
         canvas.draw();
-        for (unsigned i = 0; i < 64; ++i)
-        {
-            canvas.draw(64, 32, 0.1, 0.1, 1.5*i/64.0);
-            canvas.flush();
-            clock::delay(10ms);
-        }
-        canvas.draw(64, 32, 0.1, 0.1, 1.5);
+        // for (unsigned i = 0; i < 64; ++i)
+        // {
+        //     canvas.draw(64, 32, 0.1, 0.1, 1.5*i/64.0);
+        //     canvas.flush();
+        //     clock::delay(10ms);
+        // }
+        // canvas.draw(64, 32, 0.1, 0.1, 1.5);
         canvas.flush();
         auto end = clock::get_systick_ms();
-        render.format_at(0, 0, "Time: {}ms", end - start);
+        render.format_at(7, 0, "Time: {}ms", end - start);
         while (true)
         {
             ;

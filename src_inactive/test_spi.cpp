@@ -8,7 +8,6 @@
 #include "ssd1306.hpp"
 #include "texrender.hpp"
 #include "ffmt.hpp"
-#include "w25qxx.h"
 
 #define LED_PIN 13
 #define LED_GPIO_PORT PortC

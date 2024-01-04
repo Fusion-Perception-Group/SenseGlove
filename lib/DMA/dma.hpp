@@ -23,9 +23,9 @@ namespace detail
     {
         volatile uint32_t CR;     /*!< DMA stream x configuration register      */
         volatile uint32_t NDTR;   /*!< DMA stream x number of data register     */
-        void * volatile  PAR;    /*!< DMA stream x peripheral address register */
-        void * volatile  M0AR;   /*!< DMA stream x memory 0 address register   */
-        void * volatile  M1AR;   /*!< DMA stream x memory 1 address register   */
+        volatile void * volatile  PAR;    /*!< DMA stream x peripheral address register */
+        volatile void * volatile  M0AR;   /*!< DMA stream x memory 0 address register   */
+        volatile void * volatile  M1AR;   /*!< DMA stream x memory 1 address register   */
         volatile uint32_t FCR;    /*!< DMA stream x FIFO control register       */
     };
 
@@ -188,18 +188,18 @@ public:
                 this->owner.reg.NDTR = on;
             }
         };
-        struct _DestAddr : public _Property<void *>
+        struct _DestAddr : public _Property<volatile void *>
         {
-            constexpr _DestAddr(Stream & stream) : _Property<void *>(stream) {}
-            using _Property<void *>::operator=;
-            void * getter() const override
+            constexpr _DestAddr(Stream & stream) : _Property<volatile void *>(stream) {}
+            using _Property<volatile void *>::operator=;
+            volatile void * getter() const override
             {
                 if (owner.get_direction() == Direction::Ram2Peri)
                     return owner.reg.PAR;
                 else
                     return owner.reg.M0AR;
             }
-            void setter(void * value) const override
+            void setter(volatile void * value) const override
             {
                 const bool dst_is_ram = is_ram_addr(value);
                 void * const src_addr = owner.src_addr;
@@ -228,14 +228,14 @@ public:
             void * getter() const override
             {
                 if (owner.get_direction() == Direction::Ram2Peri)
-                    return owner.reg.M0AR;
+                    return const_cast<void*>(owner.reg.M0AR);
                 else
-                    return owner.reg.PAR;
+                    return const_cast<void*>(owner.reg.PAR);
             }
             void setter(void * value) const override
             {
                 const bool src_is_ram = is_ram_addr(value);
-                void * const dst_addr = owner.dst_addr;
+                volatile void * const dst_addr = owner.dst_addr;
                 const bool dst_is_ram = is_ram_addr(dst_addr);
                 if (not src_is_ram)
                 {
@@ -313,7 +313,7 @@ public:
         // mutable CallbackType on_fifo_error;
         _DestAddr dst_addr{*this}; // destination address
         _SauceAddr src_addr{*this}; // source address
-        void * volatile & dbuf_addr = reg.M1AR; // double buffer destination address in ram (only used in double buffer mode)
+        volatile void * volatile & dbuf_addr = reg.M1AR; // double buffer destination address in ram (only used in double buffer mode)
 
         _Count count{*this};
 

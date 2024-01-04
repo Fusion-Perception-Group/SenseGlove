@@ -144,7 +144,47 @@ void HardUsart::break_transmission() noexcept
 {
     reg.CR1 |= USART_CR1_SBK;
 }
-size_t HardUsart::exchange_bytes(const void *send, size_t send_size, void *recv, size_t recv_size)
+size_t HardUsart::buffered_exchange_bytes(const void *send, size_t send_size, void *recv, size_t recv_size)
+{
+    if (not _buffer_enabled)
+        throw std::logic_error("Buffer is not enabled");
+    auto *recv_ptr = static_cast<uint8_t *>(recv);
+    auto *send_ptr = static_cast<const uint8_t *>(send);
+    if (send == nullptr)
+        send_size = 0;
+    if (recv == nullptr)
+        recv_size = 0;
+    auto checker = clock::make_timeout(timeout_us);
+    size_t last_tx_size = tx_buffer.size();
+    const uint64_t equiv_ticks = timeout_us * SystemCoreClock / 1000000ULL;
+    while (send_size or recv_size)
+    {
+        raise_if_error();
+        if ((send_size and tx_buffer.size() != last_tx_size)
+            or (recv_size and rx_buffer.size()))
+        {
+            checker.target = clock::get_systick() + equiv_ticks;
+        }
+        if (timeout_us)
+            checker.raise_if_timedout();
+        while (send_size and tx_buffer.size() < _tx_buffer_max_size)
+        {
+            tx_buffer.push_back(*send_ptr++);
+            --send_size;
+        }
+        last_tx_size = tx_buffer.size();
+        if (tx_buffer.size())
+            enable_interrupt_transmit_ready();
+        while (recv_size and rx_buffer.size())
+        {
+            *recv_ptr++ = rx_buffer.front();
+            rx_buffer.pop_front();
+            --recv_size;
+        }
+    }
+    return std::max(send_size, recv_size);
+}
+size_t HardUsart::sync_exchange_bytes(const void *send, size_t send_size, void *recv, size_t recv_size)
 {
     size_t sent_count = 0;
     size_t recv_count = 0;
@@ -160,6 +200,8 @@ size_t HardUsart::exchange_bytes(const void *send, size_t send_size, void *recv,
     if ((get_word_length() == WordLength::Bits9) ^  // 8 bit mode
         (get_parity() == Parity::None))
     {
+        auto checker = clock::make_timeout(timeout_us);
+        const uint64_t equiv_ticks = timeout_us * SystemCoreClock / 1000000ULL;
         while (sent_count + recv_count < send_size + recv_size)
         {
             bool send_ready, recv_ready;
@@ -168,18 +210,24 @@ size_t HardUsart::exchange_bytes(const void *send, size_t send_size, void *recv,
                 send_ready = reg.SR & USART_SR_TXE;
                 recv_ready = reg.SR & USART_SR_RXNE;
                 raise_if_error();
+                if (timeout_us)
+                    checker.raise_if_timedout();
             }
-            while(not send_ready and not recv_ready);
+            while(not (send_ready or recv_ready));
 
             if (send_ready and sent_count < send_size)
             {
                 reg.DR = *send_ptr++;
                 ++sent_count;
+                if (timeout_us)
+                    checker.target = clock::get_systick() + equiv_ticks;
             }
             if (recv_ready and recv_count < recv_size)
             {
                 *recv_ptr++ = reg.DR;
                 ++recv_count;
+                if (timeout_us)
+                    checker.target = clock::get_systick() + equiv_ticks;
             }
         }
     }
@@ -496,6 +544,11 @@ bool HardUsart::has_parity_error() const noexcept
 }
 void HardUsart::raise_if_error() const
 {
+    if (_rx_buffer_overrun)
+    {
+        _rx_buffer_overrun = false;
+        throw OverrunError();
+    }
     if (!(reg.SR & (USART_SR_NE | USART_SR_PE | USART_SR_FE | USART_SR_ORE)))
         return;
     if (reg.SR & USART_SR_NE)

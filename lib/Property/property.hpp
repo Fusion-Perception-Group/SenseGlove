@@ -55,7 +55,7 @@ public:
     }
     T &operator ()() const
     {
-        return static_cast<T>(*this);
+        return static_cast<T&>(*this);
     }
 };
 
@@ -64,10 +64,10 @@ struct StaticProperty<T &, O> : StaticReadOnlyProperty<T &, O>
 {
 public:
     constexpr StaticProperty(O &&owner) : StaticReadOnlyProperty<T &, O>(std::forward<O>(owner)) {}
-    virtual void setter(T &&value) const {};
-    T &operator=(T &&value) const
+    virtual void setter(const T &value) const {};
+    T &operator=(const T &value) const
     {
-        setter(std::forward<T>(value));
+        setter(value);
         return value;
     }
 };

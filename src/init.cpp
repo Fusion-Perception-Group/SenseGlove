@@ -56,7 +56,7 @@ void init()
     {
        throw std::runtime_error("HAL init failed");
     }
-    clock::init_systick();  // sysclk_config() overwrites systick config
+    clock::init_systick(800000);  // sysclk_config() overwrites systick config
     // clock::rtc::set_clock_source(clock::rtc::ClockSource::LSE);
     // clock::rtc::init();
 }

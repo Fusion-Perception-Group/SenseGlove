@@ -247,10 +247,15 @@ namespace gesture
             Finger f5=Finger{}
         )
         {
+            f1.type = FingerType::Thumb;
             fingers[0] = f1;
+            f2.type = FingerType::Index;
             fingers[1] = f2;
+            f3.type = FingerType::Middle;
             fingers[2] = f3;
+            f4.type = FingerType::Ring;
             fingers[3] = f4;
+            f5.type = FingerType::Pinky;
             fingers[4] = f5;
         }
 

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <stdexcept>
 #include <functional>
 #include <type_traits>
@@ -9,10 +10,11 @@
 #include <iterator>
 #include <concepts>
 #include <ranges>
+#include <deque>
 #include "property.hpp"
 #include "userconfig.hpp"
 #include "nvic.hpp"
-#include "rcc.hpp"
+#include "clock.hpp"
 
 namespace vermils
 {
@@ -85,32 +87,33 @@ public:
 class OverrunError : public UsartException
 {
 public:
-    OverrunError() : UsartException("Overrun error") {}
+    OverrunError() : UsartException("Usart overrun error") {}
 };
 class ParityError : public UsartException
 {
 public:
-    ParityError() : UsartException("Parity error") {}
+    ParityError() : UsartException("Usart parity error") {}
 };
 class NoiseError : public UsartException
 {
 public:
-    NoiseError() : UsartException("Noise error") {}
+    NoiseError() : UsartException("Usart noise error") {}
 };
 class FramingError : public UsartException
 {
 public:
-    FramingError() : UsartException("Framing error") {}
+    FramingError() : UsartException("Usart framing error") {}
 };
 class BreakError : public UsartException
 {
 public:
-    BreakError() : UsartException("Break error") {}
+    BreakError() : UsartException("Usart break error") {}
 };
 
 class BaseUart
 {
 public:
+    uint64_t timeout_us = 0;  // timeout on single byte read/write
     virtual ~BaseUart() = default;
     virtual void init() = 0;
     virtual void deinit() = 0;
@@ -127,9 +130,13 @@ public:
     {
         return exchange_bytes(data, size, nullptr, 0);
     }
-    size_t write(const std::string_view sv)
+    size_t write(std::string_view sv)
     {
         return write_bytes(sv.data(), sv.size());
+    }
+    size_t write(const std::string &str)
+    {
+        return write_bytes(str.data(), str.size());
     }
     size_t write(const char *str)
     {
@@ -138,6 +145,33 @@ public:
     size_t read_bytes(void *data, size_t size)
     {
         return exchange_bytes(nullptr, 0, data, size);
+    }
+    std::string read_line()
+    {
+        std::string str;
+        char c;
+        bool leading=true;
+        while (true)
+        {
+            read_bytes(&c, 1);
+            if (c == '\n' or c == '\r')
+            {
+                if (leading)
+                    continue;
+                break;
+            }
+            leading = false;
+            str.push_back(c);
+        }
+        return str;
+    }
+    std::vector<std::string> read_lines(size_t lines)
+    {
+        std::vector<std::string> vec;
+        vec.reserve(lines);
+        for (size_t i=0; i<lines; ++i)
+            vec.push_back(read_line());
+        return vec;
     }
     template<typename T>
     void put(const T &data) requires(std::is_trivially_copyable_v<T>)
@@ -249,6 +283,10 @@ protected:
         float getter() const noexcept override;
         void setter(float value) const noexcept override;
     };
+    bool _buffer_enabled = false;
+    size_t _tx_buffer_max_size=0;
+    size_t _rx_buffer_max_size=0;
+    mutable volatile bool _rx_buffer_overrun = false;
 public:
     enum class ExtendedMode
     {
@@ -265,6 +303,8 @@ public:
     bool suppress_parity_error = false;
     bool suppress_overrun_error = false;
     _BaudRate baudrate{*this};
+    std::deque<uint8_t> tx_buffer;
+    std::deque<uint8_t> rx_buffer;
     CallbackType on_transmit_complete;
     CallbackType on_transmit_ready;
     CallbackType on_receive_ready;  // belongs to receive_related interrupt
@@ -290,8 +330,57 @@ public:
     void set_word_length(WordLength word_length) noexcept override;
     WordLength get_word_length() const noexcept override;
     void break_transmission() noexcept override;
-    size_t exchange_bytes(const void * send, size_t send_size, void * recv, size_t recv_size) override;
+    size_t exchange_bytes(const void * send, size_t send_size, void * recv, size_t recv_size) override
+    {
+        if (_buffer_enabled)
+            return buffered_exchange_bytes(send, send_size, recv, recv_size);
+        else
+            return sync_exchange_bytes(send, send_size, recv, recv_size);
+    }
+    size_t sync_exchange_bytes(const void * send, size_t send_size, void * recv, size_t recv_size);
+    size_t buffered_exchange_bytes(const void * send, size_t send_size, void * recv, size_t recv_size);
 
+    bool is_buffer_enabled() const noexcept
+    {
+        return _buffer_enabled;
+    }
+
+    void enable_buffer(size_t tx_size=128, size_t rx_size=128)
+    {
+        if (not ((get_word_length() == WordLength::Bits9) ^  // 8 bit mode
+            (get_parity() == Parity::None)))
+            throw std::invalid_argument("Buffered mode only support 8 bit data");
+        _buffer_enabled = true;
+        _tx_buffer_max_size = tx_size;
+        _rx_buffer_max_size = rx_size;
+        on_receive_ready = [this]() noexcept {
+            uint8_t data = reg.DR;
+            if (_rx_buffer_max_size == rx_buffer.size())
+            {
+                _rx_buffer_overrun = true;
+                return;
+            }
+            rx_buffer.push_back(data);
+        };
+        on_transmit_ready = [this]() noexcept {
+            if (tx_buffer.empty())
+            {
+                disable_interrupt_transmit_ready();
+                return;
+            }
+            reg.DR = tx_buffer.front();
+            tx_buffer.pop_front();
+        };
+        nvic::set_priority(irqn, 1);
+        enable_interrupt_receive_related();
+    }
+
+    void disable_buffer() noexcept
+    {
+        _buffer_enabled = false;
+        on_receive_ready = nullptr;
+        on_transmit_ready = nullptr;
+    }
 
     /**
      * @brief Trade clock deviation tolerance for higher baudrate. Allow clock to reach FCLK/8 instead of FCLK/16.

@@ -15,13 +15,11 @@ namespace gpio
 {
 using CallbackType = std::function<void()>;
 
- class GPIOException : public std::exception
+ class GPIOException : public std::runtime_error
  {
 public:
-    const char *what() const noexcept override
-    {
-        return "GPIOException";
-    }
+    GPIOException(const std::string & msg="GPIO Exception."):
+        std::runtime_error(msg) {}
  };
 
 // Define some constants
@@ -125,6 +123,20 @@ namespace ports
 }
 using namespace ports;
 
+/**
+ * @brief Pin Configuration
+ * 
+ * @param io The pin mode.
+ * @param pull The pull mode.
+ * @param speed The speed of the pin.
+ * @param out_mode The output mode.
+ * @param alternate The alternate function.
+ * @param exti_mode The EXTI mode.
+ * @param trigger The trigger mode.
+ * 
+ * @note opt for input: io, pull, exti_mode, trigger
+ * @note opt for output: io, speed, out_mode, alternate
+ */
 struct PinConfig
 {
     enum IO
@@ -233,19 +245,19 @@ class Pin
         using _Property<uint32_t>::operator =;
         uint32_t getter() const override { return owner._mask; }
     };
-    struct _OnInterrupt : _Property<CallbackType>
+    struct _OnInterrupt : _Property<CallbackType&>
     {
-        using _Property<CallbackType>::_Property;
-        using _Property<CallbackType>::operator =;
-        CallbackType getter() const override
+        using _Property<CallbackType&>::_Property;
+        using _Property<CallbackType&>::operator =;
+        CallbackType &getter() const override
         {
             if (owner._pin >= GPIO_PINS_N)
             {
-                return nullptr;
+                throw GPIOException("Invalid pin number.");
             }
             return hidden::interrupt_callbacks[owner._pin];
         }
-        void setter(const CallbackType value) const override
+        void setter(const CallbackType &value) const override
         {
             if (owner._pin >= GPIO_PINS_N)
             {
@@ -489,6 +501,125 @@ public:
 
     friend class hidden::_Port;
 };
+
+    /**
+     * @brief Button class, for easy button input handling.
+     * 
+     * @param port The port of the button.
+     * @param pin The pin number of the button.
+     * @param active_low Whether the button is low when pressed.
+     * @param trigger The trigger mode of the button interrupt.
+     */
+    class Button
+    {
+        bool _active_low;
+    public:
+        enum class Trigger
+        {
+            None,
+            Release,
+            Press,
+            Both
+        };
+        Pin pin;
+        Trigger trigger;
+        CallbackType & on_interrupt = pin.on_interrupt;
+        Button(Port & port, const uint8_t pin_n,
+            bool active_low=false, Trigger trigger=Trigger::None)
+            : _active_low(active_low), pin(port, pin_n)
+        {
+            PinConfig::Trigger trigger_mode = PinConfig::Trigger::NoTrigger;
+            if (trigger != Trigger::None)
+            {
+                if (trigger == Trigger::Both)
+                    trigger_mode = PinConfig::Trigger::RisingFalling;
+                else if (trigger == Trigger::Press and active_low)
+                    trigger_mode = PinConfig::Trigger::Falling;
+                else if (trigger == Trigger::Press and !active_low)
+                    trigger_mode = PinConfig::Trigger::Rising;
+                else if (trigger == Trigger::Release and active_low)
+                    trigger_mode = PinConfig::Trigger::Rising;
+                else if (trigger == Trigger::Release and !active_low)
+                    trigger_mode = PinConfig::Trigger::Falling;
+            }
+            PinConfig config(
+                PinConfig::Input,
+                PinConfig::PullUp,
+                PinConfig::Low,
+                PinConfig::OpenDrain,
+                0,
+                PinConfig::Interrupt,
+                trigger_mode
+            );
+            pin.load(config);
+        }
+
+        bool pressed() const noexcept
+        {
+            return _active_low ^ pin.read();
+        }
+
+        void enable_interrupt(const uint8_t priority=8) const
+        {
+            pin.enable_interrupt(priority);
+        }
+
+        void disable_interrupt() const
+        {
+            pin.disable_interrupt();
+        }
+    };
+
+    /**
+     * @brief Switch for output.
+     * 
+     */
+    class Switch
+    {
+        bool _active_low;
+    public:
+        Pin pin;
+        Switch(Port & port, const uint8_t pin_n, bool active_low=false)
+            : _active_low(active_low), pin(port, pin_n)
+        {
+            PinConfig config(
+                PinConfig::Output,
+                PinConfig::Pull::NoPull,
+                PinConfig::Low,
+                PinConfig::PushPull,
+                0,
+                PinConfig::NoEXTI,
+                PinConfig::NoTrigger
+            );
+            pin.load(config);
+            off();
+        }
+
+        void on() const noexcept
+        {
+            pin.write(!_active_low);
+        }
+
+        void off() const noexcept
+        {
+            pin.write(_active_low);
+        }
+
+        void toggle() const noexcept
+        {
+            pin.toggle();
+        }
+
+        void set(const bool on) const noexcept
+        {
+            pin.write(on ^ _active_low);
+        }
+
+        bool is_on() const noexcept
+        {
+            return _active_low ^ pin.read();
+        }
+    };
 
 }
 }
