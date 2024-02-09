@@ -6,7 +6,7 @@
 #include "ssd1306.hpp"
 #include "texrender.hpp"
 
-using namespace vermils;
+using namespace vms;
 using namespace stm32;
 
 int main()

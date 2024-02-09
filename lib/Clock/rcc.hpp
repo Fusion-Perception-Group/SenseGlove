@@ -9,7 +9,7 @@
 #include "rcc_h7_detail.hpp"
 #include "rcc_generic_detail.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

@@ -17,7 +17,7 @@
 #define __I2C_SCL_DELAY REP(0, 4, 0, __I2C_NOP);
 #define __I2C_COM_DELAY if (delay_us) clock::delay(delay_us);
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

@@ -15,7 +15,7 @@ using std::string;
 
 int main()
 {
-    using namespace vermils;
+    using namespace vms;
     using namespace stm32;
     using gpio::Pin;
     using gpio::PinConfig;

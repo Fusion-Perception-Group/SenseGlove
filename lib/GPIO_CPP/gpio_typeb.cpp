@@ -35,7 +35,7 @@
 
 #endif
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {
@@ -536,6 +536,6 @@ void Pin::unload() const
 
 } // namespace gpio
 } // namespace stm32
-} // namespace vermils
+} // namespace vms
 
 #endif // defined(_VERMIL_STM32F4) || defined(_VERMIL_STM32H7)

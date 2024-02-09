@@ -3,7 +3,7 @@
 #include <ctime>
 #include <sys/time.h>
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

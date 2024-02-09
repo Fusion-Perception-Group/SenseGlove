@@ -1,6 +1,6 @@
 #include "ssd1306.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace ssd1306
 {

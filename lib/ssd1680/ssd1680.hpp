@@ -3,7 +3,7 @@
 #include "directy.hpp"
 #include "ssd1680_driver.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace ssd1680
 {

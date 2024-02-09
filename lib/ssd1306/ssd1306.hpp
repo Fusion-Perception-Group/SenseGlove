@@ -3,7 +3,7 @@
 #include <exception>
 #include "i2c.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace ssd1306
 {

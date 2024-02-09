@@ -13,7 +13,7 @@
 #include "clock.hpp"
 #include "font_8x8.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace directy
 {

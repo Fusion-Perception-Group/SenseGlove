@@ -16,7 +16,7 @@
 #include "nvic.hpp"
 #include "clock.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

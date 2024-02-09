@@ -1,6 +1,6 @@
 #include "i2c.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

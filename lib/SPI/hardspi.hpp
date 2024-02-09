@@ -4,7 +4,7 @@
 #include "nvic.hpp"
 #include "rcc.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

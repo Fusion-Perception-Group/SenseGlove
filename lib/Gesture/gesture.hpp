@@ -6,7 +6,7 @@
 #include "gpio.hpp"
 #include "units.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace gesture
 {

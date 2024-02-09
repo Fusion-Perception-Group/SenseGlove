@@ -6,7 +6,7 @@
 #include "clock_shared.hpp"
 #include "power.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

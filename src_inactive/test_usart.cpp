@@ -15,7 +15,7 @@ int main()
 {
     bool ret = true;
 
-    using namespace vermils;
+    using namespace vms;
     using namespace stm32;
     using time::HighResTimer;
     using gpio::Pin;

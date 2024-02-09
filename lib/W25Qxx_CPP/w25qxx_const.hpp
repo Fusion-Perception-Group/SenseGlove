@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace vermils
+namespace vms
 {
     namespace w25qxx
     {

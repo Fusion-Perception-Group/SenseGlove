@@ -1,7 +1,7 @@
 #include "power.hpp"
 #include "_config.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

@@ -2,7 +2,7 @@
 #include "_config.hpp"
 #include "units.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

@@ -4,7 +4,7 @@
 #include <exception>
 #include <functional>
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

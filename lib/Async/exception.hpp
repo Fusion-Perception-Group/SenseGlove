@@ -1,7 +1,7 @@
 #pragma once
 #include <stdexcept>
 
-namespace vermils
+namespace vms
 {
 namespace aio
 {

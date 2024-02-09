@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

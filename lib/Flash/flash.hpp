@@ -16,7 +16,7 @@
 #include "flash_generic_detail.hpp"
 
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

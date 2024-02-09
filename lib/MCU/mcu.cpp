@@ -3,7 +3,7 @@
 
 #define weak __attribute__((weak))
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

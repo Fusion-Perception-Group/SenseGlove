@@ -5,7 +5,7 @@
 #include "font_8x8.hpp"
 #include "ffmt.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace ssd1306
 {

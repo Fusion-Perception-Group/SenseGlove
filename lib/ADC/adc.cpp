@@ -1,7 +1,7 @@
 #include "_config.hpp"
 #include "adc.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

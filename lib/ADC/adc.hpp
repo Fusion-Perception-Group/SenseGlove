@@ -10,7 +10,7 @@
 #include "rcc.hpp"
 #include "dma.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

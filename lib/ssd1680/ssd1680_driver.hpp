@@ -8,7 +8,7 @@
 #include "spi.hpp"
 #include "clock.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace ssd1680
 {

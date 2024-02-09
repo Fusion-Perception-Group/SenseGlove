@@ -16,7 +16,7 @@
 #include "gesture.hpp"
 #include "ecb02.hpp"
 
-using namespace vermils;
+using namespace vms;
 using namespace stm32;
 using namespace gpio::ports;
 using directy::PX_MAX;

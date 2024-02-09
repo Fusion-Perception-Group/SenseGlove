@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

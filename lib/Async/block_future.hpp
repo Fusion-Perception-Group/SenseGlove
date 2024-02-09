@@ -3,7 +3,7 @@
 #include <chrono>
 #include "exception.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace aio
 {

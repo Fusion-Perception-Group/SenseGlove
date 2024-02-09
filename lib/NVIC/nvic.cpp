@@ -1,7 +1,7 @@
 #include "nvic.hpp"
 #include "_config.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {
@@ -91,4 +91,4 @@ void disable_irq(IRQn_Type irq) noexcept
 
 } // namespace nvic
 } // namespace stm32
-} // namespace vermils
+} // namespace vms

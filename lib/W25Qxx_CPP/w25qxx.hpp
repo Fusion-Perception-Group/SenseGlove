@@ -8,7 +8,7 @@
 #include "flash.hpp"
 #include "units.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace w25qxx
 {

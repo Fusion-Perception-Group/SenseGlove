@@ -3,7 +3,7 @@
 #include <functional>
 #include <stdexcept>
 
-namespace vermils
+namespace vms
 {
 namespace tricks
 {
@@ -155,4 +155,9 @@ public:
 };
 
 }
+}
+
+namespace vermils
+{
+    using namespace vms::tricks;  // backward compatibility
 }

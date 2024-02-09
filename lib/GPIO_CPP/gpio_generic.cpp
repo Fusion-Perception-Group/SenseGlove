@@ -24,7 +24,7 @@ void Pin::CLSN::setter(const TYPE value) const\
 }
 
 #if !VERMIL_STM32_USE_CMSIS && _VERMIL_STM32_USE_GENERIC
-namespace vermils
+namespace vms
 {
 namespace stm32
 {
@@ -432,6 +432,6 @@ void Pin::unload() const
 
 } // namespace gpio
 } // namespace stm32
-} // namespace vermils
+} // namespace vms
 
 #endif // !VERMIL_STM32_USE_CMSIS && _VERMIL_STM32_USE_GENERIC

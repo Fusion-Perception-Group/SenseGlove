@@ -1,7 +1,7 @@
 // #pragma once
 
-#ifndef _VERMILS_FFORMAT_HPP
-#define _VERMILS_FFORMAT_HPP
+#ifndef _VMS_FFORMAT_HPP
+#define _VMS_FFORMAT_HPP
 
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uint_fast16_t
@@ -13,7 +13,7 @@
 #include <vector>    // std::vector
 #include <concepts>
 
-namespace vermils
+namespace vms
 {
     namespace ffmt
     {
@@ -26,6 +26,11 @@ namespace vermils
 }
 
 namespace vermils
+{
+    using namespace vms::ffmt;  // for backward compatibility
+}
+
+namespace vms
 {
     namespace ffmt
     {

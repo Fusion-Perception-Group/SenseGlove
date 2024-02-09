@@ -12,7 +12,7 @@ int main()
 {
     using std::chrono::operator ""ms;
     using std::chrono::operator ""ns;
-    using namespace vermils;
+    using namespace vms;
     using namespace stm32;
     using time::HighResTimer;
     using gpio::Pin;

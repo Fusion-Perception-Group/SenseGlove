@@ -9,7 +9,7 @@
 #define CLEAR_IT(MASK) __HAL_GPIO_EXTI_CLEAR_IT(MASK)
 #endif
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {
@@ -96,4 +96,4 @@ void Pin::trigger_interrupt() const noexcept
 
 } // namespace gpio
 } // namespace stm32
-} // namespace vermils
+} // namespace vms

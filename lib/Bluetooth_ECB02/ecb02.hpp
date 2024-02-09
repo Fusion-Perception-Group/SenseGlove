@@ -13,7 +13,7 @@
 #include "clock.hpp"
 #include "ffmt.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace ecb
 {
@@ -835,7 +835,7 @@ public:
         int n = helper::parse_int10(kv.value);  // number of devices
         for (int i=0; i<n; ++i)
         {
-            // demo: 0,Vermils,001122334455,-50
+            // demo: 0,vms,001122334455,-50
             Device dev;
             resp = uart.read_line();
             std::string_view str(resp);

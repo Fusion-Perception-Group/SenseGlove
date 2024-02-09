@@ -8,7 +8,7 @@
 #include "i2c.hpp"
 #include "units.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace wit
 {

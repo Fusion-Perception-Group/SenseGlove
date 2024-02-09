@@ -5,7 +5,7 @@
 
 #if defined(_VERMIL_STM32H7) && !_VERMIL_STM32_USE_GENERIC
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

@@ -7,7 +7,7 @@
 #include "property.hpp"
 #include "nvic.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

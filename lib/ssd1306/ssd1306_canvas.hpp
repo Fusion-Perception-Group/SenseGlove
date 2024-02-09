@@ -6,7 +6,7 @@
 #include "ffmt.hpp"
 #include "directy.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace ssd1306
 {

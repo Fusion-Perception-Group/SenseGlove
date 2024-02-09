@@ -4,7 +4,7 @@
 #include <concepts>
 #include <coroutine>
 
-namespace vermils
+namespace vms
 {
     namespace aio
     {
@@ -130,7 +130,7 @@ namespace vermils
 
 // int main()
 // {
-//     using namespace vermils::aio;
+//     using namespace vms::aio;
 //     static_assert(CoroutineHandle<Coroutine::handle_type, Coroutine::promise_type>);
 //     static_assert(Promise<Coroutine::promise_type>);
 //     return 0;

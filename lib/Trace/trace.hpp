@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "property.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

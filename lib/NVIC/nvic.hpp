@@ -8,7 +8,7 @@
 #include "_nvic_f4.hpp"
 #include "_nvic_h7.hpp"
 
-namespace vermils
+namespace vms
 {
     namespace stm32
     {

@@ -12,7 +12,7 @@
 #include "nvic.hpp"
 #include "userconfig.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {

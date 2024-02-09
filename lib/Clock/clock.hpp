@@ -12,7 +12,7 @@
 #include "tim.hpp"
 #include "rtc.hpp"
 
-namespace vermils
+namespace vms
 {
 namespace stm32
 {
