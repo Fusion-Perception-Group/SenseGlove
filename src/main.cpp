@@ -77,16 +77,35 @@ struct Coord3D
 
 struct Euler
 {
-    float pitch, yaw, roll;
+    float pitch, yaw, roll;  // in degrees
 
-    Coord3D project_to_plane(Coord3D origin, Coord3D normal, float distance)
+    /**
+     * @brief project a line with euler angles from the origin to the plane defined by the normal vector
+     * 
+     * @param origin 
+     * @param normal 
+     * @return Coord3D 
+     */
+    Coord3D project_to_plane(Coord3D origin, Coord3D normal)
     {
-        auto dot = pitch * normal.x + yaw * normal.y + roll * normal.z;
-        auto proj = dot - distance;
+        const float PI = 3.14159265358979323846;
+        float pitch_rad = pitch * PI / 180.0;
+        float yaw_rad = yaw * PI / 180.0;
+        // float roll_rad = roll * PI / 180.0;
+        float x = cos(yaw_rad) * cos(pitch_rad);
+        float y = sin(yaw_rad) * cos(pitch_rad);
+        float z = sin(pitch_rad);
+        Coord3D line = {x, y, z};
+        float dot = line.x * normal.x + line.y * normal.y + line.z * normal.z;
+        Coord3D projected = {
+            line.x - dot * normal.x,
+            line.y - dot * normal.y,
+            line.z - dot * normal.z
+        };
         return {
-            .x = pitch - proj * normal.x,
-            .y = yaw - proj * normal.y,
-            .z = roll - proj * normal.z
+            origin.x + projected.x,
+            origin.y + projected.y,
+            origin.z + projected.z
         };
     }
 };
@@ -213,7 +232,7 @@ int main()
                     .z = quat.z
                 },
                 .euler = euler,
-                .pointed_at = euler.project_to_plane({0.0, 0.0, -1.6}, {1.0, 0.0, 0.0}, 5.0)
+                .pointed_at = euler.project_to_plane({0.0, 0.0, -1.6}, {2.5, 0.0, 0.0})
             };
 
             std::string report_str = glz::write_json(report);
