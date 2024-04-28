@@ -1,3 +1,3 @@
 [submodule "thirdparty/glaze"]
 	path = thirdparty/glaze
-	url = git@github.com:VermiIIi0n/glaze.git
+	url = git@github.com:stephenberry/glaze.git

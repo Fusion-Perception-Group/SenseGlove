@@ -2,11 +2,11 @@
 
 #include <cstdint>
 #include <array>
-#include "property.hpp"
-#include "gpio.hpp"
+#include "utils/property.hpp"
+#include "gpio/gpio.hpp"
 #include "units.hpp"
 
-namespace vms
+namespace elfe
 {
 namespace gesture
 {

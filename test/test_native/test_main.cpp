@@ -1,4 +1,4 @@
-#include "ffmt.hpp"
+#include "utils/ffmt.hpp"
 #include "unity.h"
 #include <string>
 
@@ -12,7 +12,7 @@ void tearDown()
 
 void test_ffmt_parse()
 {
-    using namespace vermils::ffmt;
+    using namespace elfe::ffmt;
     int a = 123;
     double d = 123.321;
     HolderContainer phs;
@@ -47,7 +47,7 @@ void test_ffmt_parse()
 
 void test_ffmt()
 {
-    using namespace vermils::ffmt;
+    using namespace elfe::ffmt;
     int a = 123;
     double d = 123.321;
     TEST_ASSERT_EQUAL_STRING("{}", format("{{}").data());

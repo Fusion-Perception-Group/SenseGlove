@@ -1,7 +1,8 @@
-#include "mcu_basic.hpp"
-#include "_config.hpp"
+#include "mcu/mcu_basic.hpp"
+#include "_cpp_config.hpp"
+#include "result.hpp"
 
-namespace vms
+namespace elfe
 {
 namespace stm32
 {
@@ -49,16 +50,19 @@ int sysclk_config()
   return 0;
 }
 
-void init()
+VoidResult<> init()
 {
-    mcu::default_init();
+    auto r = mcu::default_init();
+    ELFE_PROP(r, r);
     if(sysclk_config())
     {
        throw std::runtime_error("HAL init failed");
     }
-    clock::init_systick(800000);  // sysclk_config() overwrites systick config
+    r = clock::init_systick(800000);  // sysclk_config() overwrites systick config
+    ELFE_PROP(r, r);
     // clock::rtc::set_clock_source(clock::rtc::ClockSource::LSE);
     // clock::rtc::init();
+    return EC::None;
 }
 
 }

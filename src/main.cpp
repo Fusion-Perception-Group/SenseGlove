@@ -4,51 +4,16 @@
 #include <array>
 #include <vector>
 #include <chrono>
-#include "ffmt.hpp"
-#include "mcu.hpp"
-#include "units.hpp"
-#include "ssd1680.hpp"
-#include "texrender.hpp"
-#include "w25qxx.hpp"
-#include "wit.hpp"
-#include "glaze/glaze.hpp"
-#include "directy.hpp"
+#include "elfe.hpp"
 #include "gesture.hpp"
-#include "ecb02.hpp"
+#include "glaze/glaze.hpp"
 
-using namespace vms;
+using namespace elfe;
 using namespace stm32;
 using namespace gpio::ports;
 using directy::PX_MAX;
 using directy::PX_MIN;
 using directy::TextBoxNode;
-
-auto & init_pwm()
-{
-    gpio::PinConfig pwm_config(
-            gpio::PinConfig::AF,
-            gpio::PinConfig::High,
-            gpio::PinConfig::PushPull,
-            2  // TIM3 Alternate Function
-        );
-
-    gpio::Pin pwm_pin1(gpio::PortB, 0, pwm_config);
-    gpio::Pin pwm_pin2(gpio::PortB, 1, pwm_config);
-
-    auto &pwm_tim = clock::tim::Tim3;
-    pwm_tim.init();
-
-    const double duty_ratio = 0.3;
-    const uint32_t pwm_freq = 170;
-
-    pwm_tim.channel3.enable();
-    pwm_tim.channel4.enable();
-
-    pwm_tim.channel3.set_pwm(pwm_freq, duty_ratio, true);
-    pwm_tim.channel4.set_pwm(pwm_freq, duty_ratio, false);
-
-    return pwm_tim;
-}
 
 auto & init_usart()
 {
@@ -105,6 +70,27 @@ auto & init_flex_adc(volatile int16_t flex_buffer[])
     return adc;
 }
 
+struct Coord3D
+{
+    float x, y, z;
+};
+
+struct Euler
+{
+    float pitch, yaw, roll;
+
+    Coord3D project_to_plane(Coord3D origin, Coord3D normal, float distance)
+    {
+        auto dot = pitch * normal.x + yaw * normal.y + roll * normal.z;
+        auto proj = dot - distance;
+        return {
+            .x = pitch - proj * normal.x,
+            .y = yaw - proj * normal.y,
+            .z = roll - proj * normal.z
+        };
+    }
+};
+
 struct Quaternion
 {
     float w, x, y, z;
@@ -122,6 +108,8 @@ struct Report
     bool wearing;
     uint64_t timestamp;
     Quaternion quaternion;
+    Euler euler;
+    Coord3D pointed_at;
 };
 
 int main()
@@ -151,9 +139,6 @@ int main()
         auto i2c = i2c::SoftMaster(
             gpio::Pin(PortB, 7), gpio::Pin(PortB, 6));
 
-        // auto &pwm_tim = init_pwm();
-        // // pwm_tim.start();
-
         volatile int16_t flex_buffer[3]={0};
         auto &adc = init_flex_adc(flex_buffer);
         gesture::Hand hand;
@@ -172,6 +157,7 @@ int main()
         auto flash = w25qxx::Flash(spi, cs);
 
         auto posensor = wit::I2CSensor(i2c);
+        posensor.set_magnet_offset(posensor.get_magnet_offset());
         posensor.set_report_rate(wit::ReportRate::None);
 
         // ############################ Main Loop ############################
@@ -196,13 +182,19 @@ int main()
             uint64_t delta_ms = clock::get_systick_ms() - time_ms;
             time_ms += delta_ms;
 
-            auto quat = posensor.get_quaternion().normalize<float>();
+            auto quat = posensor.get_quaternion().value.normalize<float>();
+            auto raw_euler = posensor.get_euler().value.rescale<float>();
+            Euler euler{
+                .pitch = -raw_euler.roll,
+                .yaw = raw_euler.yaw,
+                .roll = raw_euler.pitch
+            };
             // auto thumb_status = static_cast<uint8_t>(hand.thumb().get_status());
             // auto index_status = static_cast<uint8_t>(hand.index().get_status());
             // auto middle_status = static_cast<uint8_t>(hand.middle().get_status());
 
-            motor0.set(pinch.pressed());
-            led.set(cap_sensor.pressed());
+            // motor0.set(pinch.pressed());
+            // led.set(cap_sensor.pressed());
 
             Report report{
                 // .thumb_status = thumb_status,
@@ -219,16 +211,20 @@ int main()
                     .x = quat.x,
                     .y = quat.y,
                     .z = quat.z
-                }
+                },
+                .euler = euler,
+                .pointed_at = euler.project_to_plane({0.0, 0.0, -1.6}, {1.0, 0.0, 0.0}, 5.0)
             };
 
             std::string report_str = glz::write_json(report);
 
+            led.on();
             // if (ble.is_connected())
             // {
                 ble.uart.write(report_str);
                 ble.uart.write("\n");
             // }
+            led.off();
 
             // power::sleep();
             while(not checker.has_timedout());
