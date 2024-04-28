@@ -153,7 +153,7 @@ int main()
         // ############################ Setup ############################
         gpio::Switch led(PortC, 13, true);
         gpio::Switch motor0(PortB, 0), motor1(PortB, 1);
-        gpio::Button cap_sensor(PortA, 0), pinch(PortB, 9, true);
+        gpio::Button cap_sensor(PortA, 0), pinch(PortB, 9);
 
         auto i2c = i2c::SoftMaster(
             gpio::Pin(PortB, 7), gpio::Pin(PortB, 6));
